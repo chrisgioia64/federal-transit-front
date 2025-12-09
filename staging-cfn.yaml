@@ -1,0 +1,88 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Minimal provisioning for insecure S3 Website Endpoint staging.
+
+Parameters:
+  HostedZoneId:
+    Type: String
+    Description: Route 53 Hosted Zone ID for federaltransit.org.
+  AcmCertificateArn:
+    Type: String
+    Description: ARN for the certificate covering *.federaltransit.org (must be in us-east-1).
+
+Resources:
+
+  # 1. S3 Bucket (Public - Website Hosting Enabled)
+  StagingBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      # Shortened name based on account ID for maximum brevity and uniqueness
+      BucketName: !Sub fts-${AWS::AccountId}
+      # CRITICAL CHANGE: Enable static website hosting to create the HTTP endpoint
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
+
+  # 2. Bucket Policy (Grants Public Read Access)
+  # This policy is allowed because we are NOT using the conflicting AccessControl property.
+  StagingBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref StagingBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: PublicReadForGetBucketObjects
+            Effect: Allow
+            Principal: '*'
+            Action: 's3:GetObject'
+            Resource: !Sub 'arn:aws:s3:::${StagingBucket}/*'
+
+  # 3. CloudFront Distribution (The CDN and HTTPS endpoint)
+  StagingCFDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        DefaultRootObject: index.html
+        Aliases: 
+          - staging.federaltransit.org
+        Origins:
+          - Id: 'S3Origin'
+            # CRITICAL CHANGE: We use the S3 Website Endpoint here, which allows public access.
+            DomainName: !Select [2, !Split ["/", !GetAtt StagingBucket.WebsiteURL]]
+            CustomOriginConfig:
+              HTTPPort: 80
+              HTTPSPort: 443
+              OriginProtocolPolicy: http-only # CloudFront connects over HTTP to S3
+              OriginSslProtocols:
+                - TLSv1.2
+        ViewerCertificate:
+          AcmCertificateArn: !Ref AcmCertificateArn
+          SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1.2_2021
+        DefaultCacheBehavior:
+          TargetOriginId: 'S3Origin'
+          ViewerProtocolPolicy: 'redirect-to-https'
+          AllowedMethods:
+            - GET
+            - HEAD
+          CachedMethods:
+            - GET
+            - HEAD
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+
+  # 4. Route 53 Alias Record
+  StagingDnsRecord:
+    Type: AWS::Route53::RecordSet
+    DependsOn: StagingCFDistribution 
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: staging.federaltransit.org
+      Type: A
+      AliasTarget:
+        HostedZoneId: Z2FDTNDATAQYW2 
+        DNSName: !GetAtt StagingCFDistribution.DomainName
+        EvaluateTargetHealth: true

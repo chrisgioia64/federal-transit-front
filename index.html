@@ -1,0 +1,1571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Federal Transit Analysis Dashboard</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+    
+    <!-- Component-specific styles -->
+     
+    <style>
+        /* --- SPA OVERRIDES (Thrive Style) --- */
+        html { scroll-behavior: smooth; }
+        
+        body { position: relative; } /* For ScrollSpy if needed */
+
+        /* Hide MetroAreaTable - component removed */
+        .metro_table {
+            display: none !important;
+        }
+
+        /* Fallback CSS for marker colors if icons don't load */
+        .marker-green .leaflet-marker-icon {
+            filter: hue-rotate(120deg) saturate(1.5);
+        }
+
+        /* Sticky Nav Polish */
+        .navbar {
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 1rem 0;
+        }
+
+        /* Section Spacing & Alternating Colors */
+        section {
+            padding-top: 100px; /* Offset for sticky header */
+            padding-bottom: 80px;
+            min-height: 90vh;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .bg-section-alt { background-color: #f8f9fa; }
+        .bg-section-white { background-color: #ffffff; }
+
+        /* Map and Statistics Side-by-Side Layout */
+        .map-stats-container {
+            display: flex;
+            gap: 2rem;
+            align-items: flex-start;
+        }
+
+        .map-section-wrapper {
+            flex: 1;
+            min-width: 0; /* Allow flex item to shrink */
+        }
+
+        .map-section-wrapper h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #212529;
+            margin-bottom: 1rem;
+        }
+
+        .stats-section-wrapper {
+            flex: 1;
+            min-width: 0; /* Allow flex item to shrink */
+            max-height: 600px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-right: 0.5rem; /* Space for scrollbar */
+        }
+
+
+        .stats-section-wrapper h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #212529;
+            margin-bottom: 1rem;
+        }
+
+        /* Custom scrollbar styling for stats panel */
+        .stats-section-wrapper::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .stats-section-wrapper::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .stats-section-wrapper::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+        .stats-section-wrapper::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* Map Container */
+        #us-map-container {
+            height: 600px;
+            width: 100%;
+            border-radius: 8px;
+            border: 2px solid #dee2e6;
+            z-index: 1; /* Ensure it stays below nav */
+        }
+
+        /* Responsive: Stack vertically on mobile */
+        @media (max-width: 992px) {
+            .map-stats-container {
+                flex-direction: column;
+            }
+
+            .stats-section-wrapper {
+                max-height: none;
+                overflow-y: visible;
+            }
+
+            #us-map-container {
+                height: 400px;
+            }
+        }
+
+        /* Metropolitan Area Statistics Panel - Clean Black & White Styling */
+        .metro_card {
+            background-color: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .metro_card_title {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            padding: 1rem 1.5rem;
+            border-radius: 8px 8px 0 0;
+        }
+
+        .metro_card_title button {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #212529;
+            text-decoration: none;
+            padding: 0;
+            border: none;
+            background: none;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+
+        .metro_card_title button:hover {
+            color: #000000;
+            text-decoration: underline;
+        }
+
+        .metro_card_content {
+            padding: 1.5rem;
+        }
+
+        /* Population Area Table */
+        .population_area_div {
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 1.5rem;
+            background-color: #ffffff;
+        }
+
+        /* Full-width container for population table */
+        .population_table_half_width {
+            width: 100%;
+            max-width: 100%;
+            margin-bottom: 1.5rem;
+        }
+
+        .population_table {
+            width: 100%;
+            max-width: 100%;
+            margin: 0;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        /* Ensure table columns are properly sized */
+        /* Icon column: fixed 50px width */
+        .population_table th.table_col_img,
+        .population_table td.table_col_img {
+            width: 50px !important;
+            min-width: 50px !important;
+            max-width: 50px !important;
+        }
+
+        /* Attribute, Total, and Rank columns fill remaining space proportionally */
+        /* Icon column: 50px fixed, Attribute: 40%, Total: 35%, Rank: 25% */
+        /* Since table_col_other is hidden, we distribute 100% among the visible columns */
+        .population_table th.table_col_attribute,
+        .population_table td.table_col_attribute {
+            width: 40% !important; /* 40% of table width */
+            min-width: 280px !important;
+            white-space: nowrap !important; /* Prevent text wrapping */
+        }
+
+        .population_table th.table_col_total,
+        .population_table td.table_col_total {
+            width: 35% !important; /* 35% of table width */
+            min-width: 150px !important;
+        }
+
+        .population_table th.table_col_total_rank,
+        .population_table td.table_col_total_rank {
+            width: 25% !important; /* 25% of table width */
+            min-width: 100px !important;
+        }
+
+        /* Other column (empty, hidden) */
+        .population_table th.table_col_other,
+        .population_table td.table_col_other {
+            display: none; /* Hide empty column completely */
+        }
+
+        /* Full-width container for Transit Usage row */
+        .transit_usage_full_width {
+            width: 100%;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #dee2e6;
+        }
+
+        /* Transit Usage specific styling */
+        .transit_usage_full_width .table_col_attribute {
+            width: 100px;
+            min-width: 100px;
+            max-width: 100px;
+        }
+
+        .transit_usage_full_width td[colspan] {
+            width: calc(100% - 50px - 100px); /* Remaining width after icon (50px) and Transit Usage text (100px) */
+        }
+
+        .transit_usage_full_width .population_table {
+            width: 100%;
+        }
+
+        .population_table th {
+            font-weight: 600;
+            color: #212529;
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 2px solid #dee2e6;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Center-align Total and Rank column headers */
+        .population_table th.table_col_total,
+        .population_table th.table_col_total_rank {
+            text-align: center;
+        }
+
+        .population_table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid #f1f3f5;
+            color: #495057;
+        }
+
+        .population_table tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .table_col_img {
+            width: 50px;
+            min-width: 50px;
+            max-width: 50px;
+            text-align: center;
+        }
+
+        .table_col_img svg {
+            color: #6c757d;
+        }
+
+        .table_col_attribute {
+            font-weight: 500;
+            color: #212529;
+        }
+
+        .table_col_total {
+            text-align: center;
+            font-weight: 600;
+            color: #212529;
+        }
+
+        .table_col_total_rank {
+            text-align: center;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .table_col_other {
+            width: 100%;
+        }
+
+        /* Progress bar styling */
+        .population_table .progress {
+            height: 1.5rem;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .population_table .progress-bar {
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+        }
+
+        /* Stacked Bar Chart Containers */
+        .stacked_bar_chart_div {
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 1.5rem;
+            background-color: #ffffff;
+        }
+
+        .stacked_bar_chart_div h5 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #212529;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        .stacked_bar_chart_div select {
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 0.5rem 1rem;
+            background-color: #ffffff;
+            color: #212529;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .stacked_bar_chart_div select:focus {
+            outline: none;
+            border-color: #212529;
+            box-shadow: 0 0 0 3px rgba(0,0,0,0.1);
+        }
+
+        /* Chart container */
+        .stacked_bar_chart_div > div:last-child {
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar sticky-top navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">Federal Transit Analysis</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse justify-content-center" id="navbarNav">
+                <ul class="navbar-nav gap-3">
+                    <li class="nav-item"><a class="nav-link" href="#home">Home</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="#us-map">Map</a></li>
+                    <!-- <li class="nav-item"><a class="nav-link" href="#query">Table View</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#scatterplot">Scatterplot</a></li> -->
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- <section id="home" class="bg-section-white">
+        <div class="container text-center">
+            <h1 class="display-4 mb-4">Federal Transit Data Analysis</h1>
+            <p class="lead mb-5">Exploring metropolitan transit statistics through visualization and AI-generated insights.</p>
+
+            <div class="card mx-auto shadow-sm" style="max-width: 800px;">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Audio Analysis (NotebookLM)</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Topic</th>
+                                <th>Audio</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Beyond the Commute</td>
+                                <td><audio controls src="assets/audio/beyond_commute.mp3" class="w-100"></audio></td>
+                            </tr>
+                            <tr>
+                                <td>San Francisco Metro</td>
+                                <td><audio controls src="assets/audio/sf_metro.mp3" class="w-100"></audio></td>
+                            </tr>
+                            <tr>
+                                <td>Portland, Oregon</td>
+                                <td><audio controls src="assets/audio/portland.mp3" class="w-100"></audio></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section> -->
+
+    <section id="us-map" class="bg-section-alt">
+        <div class="container">
+            <div class="map-stats-container">
+                <div class="map-section-wrapper">
+                    <h3 class="mb-3">Nationwide Map</h3>
+                    <div class="mb-3 d-flex align-items-center gap-3 flex-wrap">
+                        <div class="d-flex align-items-center gap-2">
+                            <label for="population-filter" class="form-label mb-0 small">Filter by Population:</label>
+                            <select id="population-filter" class="form-select form-select-sm" style="max-width: 200px;">
+                                <option value="500000">Above 500,000</option>
+                                <option value="1000000" selected>Above 1,000,000</option>
+                                <option value="2000000">Above 2,000,000</option>
+                            </select>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <label for="color-metric" class="form-label mb-0 small">Color by Metric:</label>
+                            <select id="color-metric" class="form-select form-select-sm" style="max-width: 250px;">
+                                <option value="trips">Trips per Person</option>
+                                <option value="expenses" selected>Operating Expenses per Person</option>
+                                <option value="fares">Fares per Person</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="color-legend" class="mb-3" style="display: none;">
+                        <label class="form-label">Legend:</label>
+                        <div class="d-flex align-items-center" style="gap: 10px; flex-wrap: wrap;">
+                            <div class="d-flex align-items-center" style="gap: 5px;">
+                                <div style="width: 20px; height: 20px; border-radius: 50%; background-color: rgb(34, 139, 34); border: 1px solid white; box-shadow: 0 1px 2px rgba(0,0,0,0.2);"></div>
+                                <span id="legend-min" style="font-size: 0.9rem;">Low</span>
+                            </div>
+                            <div style="width: 150px; height: 20px; background: linear-gradient(to right, rgb(34, 139, 34), rgb(255, 215, 0), rgb(255, 255, 0), rgb(255, 140, 0), rgb(255, 0, 0)); border-radius: 10px; border: 1px solid #ccc;"></div>
+                            <div class="d-flex align-items-center" style="gap: 5px;">
+                                <div style="width: 20px; height: 20px; border-radius: 50%; background-color: rgb(255, 0, 0); border: 1px solid white; box-shadow: 0 1px 2px rgba(0,0,0,0.2);"></div>
+                                <span id="legend-max" style="font-size: 0.9rem;">High</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="us-map-container" style="position: relative;">
+                        <div id="map-loading-overlay" class="d-flex flex-column align-items-center justify-content-center" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255, 255, 255, 0.9); z-index: 1000; border-radius: 4px; display: none;">
+                            <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <div class="text-muted">
+                                <strong>Loading map markers...</strong>
+                                <div id="map-loading-text" class="small mt-2">Fetching metro data</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="stats-section-wrapper">
+                    <h3 class="mb-3" id="metro-stats-title">Metropolitan Area Statistics</h3>
+                    <div id="stats-placeholder" class="text-center p-5 text-muted border rounded bg-light">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" class="bi bi-geo-alt mb-3" viewBox="0 0 16 16">
+                            <path d="M12.166 8.94c-.524 1.062-1.234 2.12-1.96 3.07A31.493 31.493 0 0 1 8 14.58a31.481 31.481 0 0 1-2.206-2.57c-.726-.95-1.436-2.008-1.96-3.07C3.304 7.867 3 6.862 3 6a5 5 0 0 1 10 0c0 .862-.305 1.867-.834 2.94zM8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10z"/>
+                            <path d="M8 8a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm0 1a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
+                        </svg>
+                        <h5>No City Selected</h5>
+                        <p>Click a marker on the map to view detailed transit statistics.</p>
+                    </div>
+                
+                    <div id="metro-root">
+                        <a href="#metro-charts" class="btn btn-outline-primary w-100">
+                            View Detailed Analysis Charts (Full Screen)
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="metro-charts" class="bg-section-white">
+        <div class="container">
+        <h2 class="text-center mb-2">Detailed Analysis</h2>
+        <p class="text-center mb-5 text-muted">Scroll up to return to the interactive map.</p>
+
+        <div id="metro-charts-root"></div>
+    </div>
+    </section>
+
+    <!-- Aggregate Query Table section - commented out -->
+    <!--
+    <section id="query" class="bg-section-alt">
+        <div class="container">
+            <h2 class="text-center mb-4">Aggregate Query Table</h2>
+            
+            <div class="row">
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header bg-primary text-white">Query Settings</div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Statistic</label>
+                                <select id="stat-select" class="form-select">
+                                    <option value="upt">Unlinked Passenger Trips</option>
+                                    <option value="pm">Passenger Miles</option>
+                                    <option value="oe">Operating Expenses</option>
+                                    <option value="fares">Fares</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Entity Type</label>
+                                <select id="entity-select" class="form-select">
+                                    <option value="Agency">Agency</option>
+                                    <option value="City">City</option>
+                                    <option value="State">State</option>
+                                    <option value="Metro">Metro</option>
+                                </select>
+                            </div>
+                            <button id="run-query-btn" class="btn btn-primary w-100">Run Query</button>
+                            <button id="export-btn" class="btn btn-outline-success w-100 mt-2">Export CSV</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-8">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <table id="query-table" class="table table-striped w-100">
+                                <thead>
+                                    <tr>
+                                        <th>Rank</th>
+                                        <th>Name</th>
+                                        <th>Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    -->
+
+    <!-- Interactive Analysis section - commented out -->
+    <!--
+    <section id="scatterplot" class="bg-section-white">
+        <div class="container">
+            <h2 class="text-center mb-5">Interactive Analysis</h2>
+            <div id="scatter-root"></div>
+        </div>
+    </section>
+    -->
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+
+    <script src="scripts/config_api.js"></script>
+
+    <script>
+        /*
+         * MAP DATA POPULATION GUIDE
+         * ========================
+         * 
+         * This script loads metropolitan areas from your backend API and displays them on a map.
+         * There are THREE ways to provide data, listed in order of efficiency:
+         * 
+         * OPTION 1 (BEST): Single API endpoint with coordinates
+         * -----------------------------------------------------
+         * Create an endpoint: POST /query/metros_with_coordinates
+         * Response format: [
+         *   { name: "San Francisco-Oakland-Berkeley, CA", state: "CA", latitude: 37.7749, longitude: -122.4194 },
+         *   { name: "New York-Newark-Jersey City, NY-NJ-PA", state: "NY", latitude: 40.7128, longitude: -74.0060 },
+         *   ...
+         * ]
+         * 
+         * OPTION 2 (GOOD): Get coordinates per metro from your database
+         * --------------------------------------------------------------
+         * Create an endpoint: POST /query/metro_coordinates
+         * Request body: { value: "Metro Name" }
+         * Response format: { latitude: 37.7749, longitude: -122.4194 }
+         * OR: { lat: 37.7749, lng: -122.4194 }
+         * 
+         * OPTION 3 (SLOW): Use external geocoding (current fallback)
+         * -----------------------------------------------------------
+         * If coordinates aren't in your database, the script will use OpenStreetMap's
+         * Nominatim geocoding service. This is slow (rate-limited to 1 request/second)
+         * and may take several minutes for many metros.
+         * 
+         * REQUIRED API ENDPOINTS:
+         * ----------------------
+         * 1. POST /query/metros - Returns array of metro area names (strings)
+         * 2. POST /query/states - Returns array of state codes (strings)
+         * 3. POST /query/metro_by_state - Request: { value: "CA" }, Returns: array of metro names
+         * 
+         * OPTIONAL API ENDPOINTS (for better performance):
+         * -----------------------------------------------
+         * 1. POST /query/metros_with_coordinates - Returns metros with lat/lng (see Option 1)
+         * 2. POST /query/metro_coordinates - Returns coordinates for a metro (see Option 2)
+         * 
+         * DEBUGGING:
+         * ----------
+         * Open browser console (F12) to see:
+         * - How many metros were loaded
+         * - Which metros got coordinates from API vs geocoding
+         * - Any errors during data loading
+         */
+        
+        // Global map instance and metro markers storage
+        let mapInstance = null;
+        let metroMarkers = {}; // Store markers by state_metroName key
+        let metroMarkersByName = {}; // Store markers by metro name for easier lookup
+        let selectedMarker = null; // Track currently selected marker
+        let selectedMarkerKey = null; // Track key of selected marker
+        let allMetroData = []; // Store all metro data with population and metrics for filtering/coloring
+        let currentPopulationFilter = 1000000; // Default filter: 1,000,000
+        let currentColorMetric = 'expenses'; // Default: Operating Expenses per Person
+        let isInitialLoad = true; // Track if this is the initial map load
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize the map centered on the US
+            mapInstance = L.map('us-map-container').setView([39.8283, -98.5795], 4);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap'
+            }).addTo(mapInstance);
+
+            // Set up population filter dropdown
+            const populationFilter = document.getElementById('population-filter');
+            if (populationFilter) {
+                populationFilter.addEventListener('change', function() {
+                    currentPopulationFilter = parseInt(this.value);
+                    console.log('Population filter changed to:', currentPopulationFilter);
+                    isInitialLoad = false; // This is a filter change, not initial load
+                    applyPopulationFilter();
+                });
+            }
+
+            // Set up color metric dropdown
+            const colorMetric = document.getElementById('color-metric');
+            if (colorMetric) {
+                colorMetric.addEventListener('change', function() {
+                    currentColorMetric = this.value;
+                    console.log('Color metric changed to:', currentColorMetric);
+                    applyColorScheme();
+                    updateLegend();
+                });
+            }
+
+            // Load metro areas and add markers to map
+            loadMetroAreasOnMap();
+        });
+
+        // Function to load metro areas and add them to the map
+        // OPTION 1: If your API returns metros with coordinates directly, use this optimized version
+        // Expected API response format: [{ name: "Metro Name", state: "CA", latitude: 37.7749, longitude: -122.4194 }, ...]
+        async function loadMetroAreasOnMap() {
+            // Show loading indicator
+            const loadingOverlay = document.getElementById('map-loading-overlay');
+            const loadingText = document.getElementById('map-loading-text');
+            if (loadingOverlay) {
+                loadingOverlay.style.display = 'flex';
+                loadingOverlay.style.visibility = 'visible';
+                loadingOverlay.removeAttribute('hidden');
+                console.log('Loading indicator shown');
+            } else {
+                console.error('map-loading-overlay element not found when trying to show!');
+            }
+            isInitialLoad = true; // Mark as initial load
+            
+            try {
+                // OPTION A: Try fetching metros with coordinates in one call (MOST EFFICIENT)
+                // If your backend has an endpoint that returns metros with coordinates:
+                // Example: POST /query/metros_with_coordinates
+                try {
+                    const responseWithCoords = await fetch(API_URL + "/query/metros_with_coordinates", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (responseWithCoords.ok) {
+                        const metrosWithCoords = await responseWithCoords.json();
+                        console.log(`✓ OPTION A: Loaded ${metrosWithCoords.length} metros with coordinates from API`);
+                        if (loadingText) {
+                            loadingText.textContent = `Loaded ${metrosWithCoords.length} metros, fetching population data...`;
+                        }
+                        
+                        // Debug: Log first metro to see structure
+                        if (metrosWithCoords.length > 0) {
+                            console.log('=== API RESPONSE DEBUG ===');
+                            console.log('Sample metro data (full object):', JSON.stringify(metrosWithCoords[0], null, 2));
+                            console.log('Sample metro data (object):', metrosWithCoords[0]);
+                            console.log('All keys in metro object:', Object.keys(metrosWithCoords[0]));
+                            console.log('=== END API RESPONSE DEBUG ===');
+                        }
+                        
+                        // Store metro data with coordinates
+                        // The backend DTO includes: name, state, latitude, longitude, population
+                        const metrosWithCoordsOnly = metrosWithCoords.map(metro => {
+                            const coords = extractCoordinates(metro);
+                            if (!coords) {
+                                console.warn(`Metro ${metro.name} has invalid coordinates:`, metro);
+                                return null;
+                            }
+                            return {
+                                name: metro.name || metro.metropolitanArea || metro,
+                                state: metro.state || 'Unknown',
+                                coordinates: coords,
+                                population: metro.population || 0,
+                                // We'll fetch metrics separately since they're not in the bulk endpoint
+                                tripsPerPerson: 0,
+                                expensesPerPerson: 0,
+                                faresPerPerson: 0
+                            };
+                        }).filter(metro => metro !== null);
+                        
+                        console.log(`Stored ${metrosWithCoordsOnly.length} metros with valid coordinates`);
+                        if (loadingText) {
+                            loadingText.textContent = `Fetching metric data for ${metrosWithCoordsOnly.length} metros...`;
+                        }
+                        
+                        // Fetch metrics (tripsPerPerson, expensesPerPerson, faresPerPerson) for each metro
+                        // Population is already included from the bulk endpoint
+                        console.log('Fetching metric data (trips/expenses/fares per person) for each metro...');
+                        const metrosWithMetrics = await Promise.all(
+                            metrosWithCoordsOnly.map(async (metro) => {
+                                try {
+                                    const response = await fetch(API_URL + "/query/metro_rank", {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json'
+                                        },
+                                        body: JSON.stringify({ value: metro.name })
+                                    });
+                                    
+                                    if (response.ok) {
+                                        const rankInfo = await response.json();
+                                        // rankInfo is an array: [0]=UPT, [1]=PassengerMiles, [2]=OperatingExpenses, [3]=Fares
+                                        if (rankInfo && rankInfo.length >= 4) {
+                                            return {
+                                                ...metro,
+                                                // Keep population from bulk endpoint, but update if rankInfo has it
+                                                population: rankInfo[0].population || metro.population || 0,
+                                                tripsPerPerson: rankInfo[0].perCapitaAmount || 0,
+                                                expensesPerPerson: rankInfo[2].perCapitaAmount || 0,
+                                                faresPerPerson: rankInfo[3].perCapitaAmount || 0
+                                            };
+                                        }
+                                    }
+                                    // If fetch fails, return metro with 0 metrics but keep coordinates and population
+                                    return {
+                                        ...metro,
+                                        tripsPerPerson: 0,
+                                        expensesPerPerson: 0,
+                                        faresPerPerson: 0
+                                    };
+                                } catch (error) {
+                                    console.warn(`Failed to fetch metrics for ${metro.name}:`, error);
+                                    return {
+                                        ...metro,
+                                        tripsPerPerson: 0,
+                                        expensesPerPerson: 0,
+                                        faresPerPerson: 0
+                                    };
+                                }
+                            })
+                        );
+                        
+                        allMetroData = metrosWithMetrics;
+                        
+                        // Debug: Log population statistics
+                        const populations = allMetroData.map(m => m.population).filter(p => p > 0);
+                        const zeroPopulations = allMetroData.filter(m => m.population === 0 || m.population === null || m.population === undefined);
+                        
+                        console.log(`=== POPULATION FETCH COMPLETE ===`);
+                        console.log(`Total metros loaded: ${allMetroData.length}`);
+                        console.log(`Metros with population > 0: ${populations.length}`);
+                        console.log(`Metros with population = 0/null: ${zeroPopulations.length}`);
+                        
+                        if (populations.length > 0) {
+                            console.log(`Population stats: min=${Math.min(...populations).toLocaleString()}, max=${Math.max(...populations).toLocaleString()}, avg=${Math.round(populations.reduce((a,b) => a+b, 0) / populations.length).toLocaleString()}`);
+                            console.log(`Metros with population >= 500,000: ${populations.filter(p => p >= 500000).length}`);
+                            console.log(`Metros with population >= 1,000,000: ${populations.filter(p => p >= 1000000).length}`);
+                            console.log(`Metros with population >= 2,000,000: ${populations.filter(p => p >= 2000000).length}`);
+                            
+                            // Show sample metros at each threshold
+                            const sample500k = allMetroData.filter(m => m.population >= 500000).slice(0, 5);
+                            console.log('Sample metros >= 500k:', sample500k.map(m => ({name: m.name, pop: m.population.toLocaleString()})));
+                            
+                            const sample1M = allMetroData.filter(m => m.population >= 1000000).slice(0, 5);
+                            console.log('Sample metros >= 1M:', sample1M.map(m => ({name: m.name, pop: m.population.toLocaleString()})));
+                        } else {
+                            console.error('ERROR: No metros have population data! All population values are 0/null.');
+                            console.log('First 5 metros:', allMetroData.slice(0, 5).map(m => ({name: m.name, pop: m.population})));
+                        }
+                        
+                        console.log(`=== END POPULATION FETCH ===`);
+                        
+                        // Apply initial filter and add markers
+                        if (loadingText) {
+                            loadingText.textContent = 'Adding markers to map...';
+                        }
+                        applyPopulationFilter();
+                        
+                        // Update legend after data is loaded
+                        updateLegend();
+                        
+                        // Note: Loading indicator hiding is handled inside applyPopulationFilter()
+                        // to ensure it happens after all markers are added and colored
+                        return; // Successfully loaded from API, exit early
+                    } else {
+                        // Response was not ok - log the error
+                        const errorText = await responseWithCoords.text();
+                        console.error(`✗ OPTION A failed: API returned status ${responseWithCoords.status} ${responseWithCoords.statusText}`);
+                        console.error(`Response body:`, errorText);
+                        console.log('Falling back to OPTION B (individual coordinate fetching)');
+                    }
+                } catch (err) {
+                    console.error('✗ OPTION A error:', err);
+                    console.error('Error details:', err.message, err.stack);
+                    console.log('Falling back to OPTION B (individual coordinate fetching)');
+                }
+                
+                // OPTION B: Fetch metros and get coordinates separately (CURRENT IMPLEMENTATION)
+                // Step 1: Fetch all metros from API
+                const response = await fetch(API_URL + "/query/metros", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    console.error('Failed to fetch metros:', response.status);
+                    return;
+                }
+                
+                const metros = await response.json();
+                console.log(`Fetched ${metros.length} metros from API`);
+                if (loadingText) {
+                    loadingText.textContent = `Fetched ${metros.length} metros, getting coordinates...`;
+                }
+                
+                // Step 2: Fetch all states to map metros to states
+                const statesResponse = await fetch(API_URL + "/query/states", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                let stateMetroMap = {}; // Map of metro name -> state
+                if (statesResponse.ok) {
+                    const states = await statesResponse.json();
+                    // Build state-metro mapping
+                    for (const state of states) {
+                        try {
+                            const metroResponse = await fetch(API_URL + "/query/metro_by_state", {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({ value: state })
+                            });
+                            
+                            if (metroResponse.ok) {
+                                const stateMetros = await metroResponse.json();
+                                stateMetros.forEach(metro => {
+                                    stateMetroMap[metro] = state;
+                                });
+                            }
+                        } catch (err) {
+                            console.warn(`Failed to get metros for state ${state}:`, err);
+                        }
+                    }
+                }
+                
+                // Step 3: Get coordinates for each metro and add markers
+                // This will try API first, then fallback to geocoding
+                let delay = 0;
+                let markersAdded = 0;
+                const totalMetros = metros.length;
+                
+                if (loadingText) {
+                    loadingText.textContent = `Getting coordinates for ${totalMetros} metros...`;
+                }
+                
+                for (const metro of metros) {
+                    const state = stateMetroMap[metro] || 'Unknown';
+                    
+                    // Add delay to respect geocoding rate limits (1 request per second)
+                    setTimeout(async () => {
+                        const coords = await getMetroCoordinates(metro, state);
+                        if (coords) {
+                            addMetroMarker(metro, state, coords);
+                            markersAdded++;
+                            
+                            // Update loading text
+                            if (loadingText) {
+                                loadingText.textContent = `Added ${markersAdded} of ${totalMetros} markers...`;
+                            }
+                            
+                            // Hide loading indicator when all markers are added
+                            if (markersAdded === totalMetros) {
+                                const overlay = document.getElementById('map-loading-overlay');
+                                if (overlay) {
+                                    setTimeout(() => {
+                                        const finalOverlay = document.getElementById('map-loading-overlay');
+                                        if (finalOverlay) {
+                                            finalOverlay.style.display = 'none';
+                                            console.log(`✓ Loading indicator hidden (OPTION B) - all ${totalMetros} markers added`);
+                                            isInitialLoad = false;
+                                        }
+                                    }, 1000); // Delay to ensure all markers are rendered
+                                }
+                            }
+                        }
+                    }, delay);
+                    
+                    delay += 1100; // 1.1 seconds between requests
+                }
+            } catch (error) {
+                console.error('Error loading metro areas:', error);
+                // Hide loading indicator on error
+                if (loadingOverlay) {
+                    loadingOverlay.style.display = 'none';
+                }
+            }
+        }
+        
+        // Helper function to extract coordinates from various API response formats
+        function extractCoordinates(metroData) {
+            // Handle different possible field names
+            if (metroData.latitude && metroData.longitude) {
+                return [parseFloat(metroData.latitude), parseFloat(metroData.longitude)];
+            }
+            if (metroData.lat && metroData.lng) {
+                return [parseFloat(metroData.lat), parseFloat(metroData.lng)];
+            }
+            if (metroData.coordinates && Array.isArray(metroData.coordinates)) {
+                return metroData.coordinates; // [lat, lng] format
+            }
+            if (metroData.location) {
+                return extractCoordinates(metroData.location);
+            }
+            return null;
+        }
+
+        // Function to get coordinates for a metro area
+        // Priority: 1) Database API, 2) Geocoding service
+        async function getMetroCoordinates(metroName, state) {
+            // STEP 1: Try to get coordinates from your database API (FASTEST)
+            // This endpoint should return: { latitude: X, longitude: Y } or { lat: X, lng: Y }
+            try {
+                const response = await fetch(API_URL + "/query/metro_coordinates", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ value: metroName })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    // Check if there's an error in the response
+                    if (data.error) {
+                        console.log(`Coordinates not found in database for ${metroName}: ${data.error}`);
+                        // Continue to geocoding fallback
+                    } else {
+                        const coords = extractCoordinates(data);
+                        if (coords) {
+                            console.log(`Got coordinates from API for ${metroName}`);
+                            return coords;
+                        }
+                    }
+                } else {
+                    // Non-200 response, log but don't throw - continue to geocoding
+                    console.log(`API returned ${response.status} for ${metroName}, using geocoding`);
+                }
+            } catch (error) {
+                // API endpoint doesn't exist or failed, continue to geocoding
+                // Don't log CORS errors as they're expected if endpoint doesn't exist
+                if (!error.message.includes('CORS') && !error.message.includes('Failed to fetch')) {
+                    console.log(`API coordinates not available for ${metroName}, using geocoding:`, error.message);
+                }
+            }
+            
+            // STEP 2: Fallback to geocoding service (SLOWER, has rate limits)
+            
+            // Fallback: Use Nominatim geocoding (OpenStreetMap)
+            // Note: Nominatim has rate limits, so we add delays between requests
+            try {
+                // Clean up metro name for better geocoding (remove common suffixes)
+                let searchQuery = metroName;
+                if (state !== 'Unknown') {
+                    searchQuery = `${metroName}, ${state}, USA`;
+                } else {
+                    searchQuery = `${metroName}, USA`;
+                }
+                
+                const geocodeResponse = await fetch(
+                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1&countrycodes=us`,
+                    {
+                        headers: {
+                            'User-Agent': 'Federal Transit App'
+                        }
+                    }
+                );
+                
+                if (geocodeResponse.ok) {
+                    const geocodeData = await geocodeResponse.json();
+                    if (geocodeData && geocodeData.length > 0) {
+                        return [parseFloat(geocodeData[0].lat), parseFloat(geocodeData[0].lon)];
+                    }
+                }
+            } catch (error) {
+                console.warn(`Could not geocode ${metroName}:`, error);
+            }
+            
+            return null;
+        }
+
+        // Function to determine icon size based on population
+        function getIconSize(population) {
+            if (!population || population === 0) {
+                return { width: 24, height: 39 }; // Default size
+            }
+            
+            if (population >= 2000000) {
+                // Largest: 30px width (less drastic)
+                return { width: 30, height: 49 }; // Scaled proportionally (30/24 * 39 ≈ 49)
+            } else if (population >= 1000000) {
+                // Medium: 24px width
+                return { width: 24, height: 39 }; // Standard size
+            } else {
+                // Smallest: 18px width (for >= 500k, less drastic)
+                return { width: 18, height: 29 }; // Scaled proportionally (18/24 * 39 ≈ 29)
+            }
+        }
+
+        // Function to get color based on value and percentiles (gradient: green → yellow → orange → red)
+        function getColorForValue(value, min, max) {
+            if (value === null || value === undefined || isNaN(value) || max === min) {
+                return 'blue'; // Default color if no data
+            }
+            
+            // Normalize value to 0-1 range
+            const normalized = (value - min) / (max - min);
+            
+            // Gradient: green (low) → yellow (medium-low) → orange (medium-high) → red (high)
+            if (normalized < 0.25) {
+                // Green to yellow-green (0-25%)
+                const t = normalized / 0.25;
+                return `rgb(${Math.round(34 + t * 221)}, ${Math.round(139 + t * 116)}, ${Math.round(34 - t * 34)})`; // #228B22 to #FFD700
+            } else if (normalized < 0.5) {
+                // Yellow-green to yellow (25-50%)
+                const t = (normalized - 0.25) / 0.25;
+                return `rgb(${Math.round(255 - t * 55)}, ${Math.round(255 - t * 55)}, ${Math.round(0 + t * 0)})`; // #FFD700 to #FFFF00
+            } else if (normalized < 0.75) {
+                // Yellow to orange (50-75%)
+                const t = (normalized - 0.5) / 0.25;
+                return `rgb(${Math.round(255 - t * 0)}, ${Math.round(200 - t * 100)}, ${Math.round(0 + t * 0)})`; // #FFFF00 to #FF8C00
+            } else {
+                // Orange to red (75-100%)
+                const t = (normalized - 0.75) / 0.25;
+                return `rgb(${Math.round(255 - t * 0)}, ${Math.round(100 - t * 100)}, ${Math.round(0 + t * 0)})`; // #FF8C00 to #FF0000
+            }
+        }
+
+        // Function to get metric value for a metro based on selected color metric
+        function getMetricValue(metro, metric) {
+            switch(metric) {
+                case 'trips':
+                    return metro.tripsPerPerson || 0;
+                case 'expenses':
+                    return metro.expensesPerPerson || 0;
+                case 'fares':
+                    return metro.faresPerPerson || 0;
+                default:
+                    return 0;
+            }
+        }
+
+        // Function to create a custom colored marker icon (circular)
+        function createColoredMarkerIcon(color, size) {
+            const iconSize = size || { width: 24, height: 39 };
+            const radius = Math.floor(iconSize.width / 2);
+            
+            // Create SVG icon as circular marker
+            const svgIcon = L.divIcon({
+                className: 'custom-marker-icon',
+                html: `<div style="
+                    width: ${iconSize.width}px;
+                    height: ${iconSize.width}px;
+                    border-radius: 50%;
+                    background-color: ${color};
+                    border: 2px solid white;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                "></div>`,
+                iconSize: [iconSize.width, iconSize.width],
+                iconAnchor: [radius, radius],
+                popupAnchor: [0, -radius]
+            });
+            
+            return svgIcon;
+        }
+
+        // Function to get display name for metric
+        function getMetricDisplayName(metric) {
+            switch(metric) {
+                case 'trips':
+                    return 'Trips per Person';
+                case 'expenses':
+                    return 'Operating Expenses per Person';
+                case 'fares':
+                    return 'Fares per Person';
+                default:
+                    return 'Metric';
+            }
+        }
+
+        // Function to format metric value with units
+        function formatMetricValue(value, metric) {
+            if (metric === 'expenses' || metric === 'fares') {
+                return '$' + value.toFixed(1);
+            }
+            return value.toFixed(1);
+        }
+
+        // Function to update the color legend
+        function updateLegend() {
+            const legendDiv = document.getElementById('color-legend');
+            const legendMin = document.getElementById('legend-min');
+            const legendMax = document.getElementById('legend-max');
+            
+            if (!legendDiv || !legendMin || !legendMax) {
+                console.warn('Legend elements not found');
+                return;
+            }
+
+            // If no metro data, hide legend
+            if (allMetroData.length === 0) {
+                legendDiv.style.display = 'none';
+                return;
+            }
+
+            // Get all values for the selected metric
+            const values = allMetroData
+                .map(m => getMetricValue(m, currentColorMetric))
+                .filter(v => v > 0 && !isNaN(v));
+            
+            if (values.length === 0) {
+                legendDiv.style.display = 'none';
+                return;
+            }
+
+            const min = Math.min(...values);
+            const max = Math.max(...values);
+            
+            // Update legend text - show "Low (e.g., $9.5)" and "High (e.g., $706.8)"
+            // Metric name is already shown in the dropdown above, so we don't repeat it
+            legendMin.textContent = `Low (e.g., ${formatMetricValue(min, currentColorMetric)})`;
+            legendMax.textContent = `High (e.g., ${formatMetricValue(max, currentColorMetric)})`;
+            
+            // Show legend
+            legendDiv.style.display = 'block';
+        }
+
+        // Function to apply color scheme to all markers based on selected metric
+        function applyColorScheme() {
+            if (allMetroData.length === 0) {
+                console.log('Cannot apply color scheme: no metro data');
+                return;
+            }
+
+            // Get all values for the selected metric
+            const values = allMetroData
+                .map(m => getMetricValue(m, currentColorMetric))
+                .filter(v => v > 0 && !isNaN(v));
+            
+            if (values.length === 0) {
+                console.warn('No valid values for metric:', currentColorMetric);
+                return;
+            }
+
+            const min = Math.min(...values);
+            const max = Math.max(...values);
+            
+            console.log(`Applying color scheme for ${currentColorMetric}: min=${min.toFixed(2)}, max=${max.toFixed(2)}`);
+
+            // Update legend
+            updateLegend();
+
+            // Update all markers except the selected one (which stays blue)
+            Object.entries(metroMarkers).forEach(([key, marker]) => {
+                // Skip selected marker (keep it blue)
+                if (marker === selectedMarker) {
+                    return;
+                }
+
+                // Get metro data for this marker
+                const metroName = marker._metroName;
+                const metro = allMetroData.find(m => m.name === metroName);
+                
+                if (metro) {
+                    const value = getMetricValue(metro, currentColorMetric);
+                    const color = getColorForValue(value, min, max);
+                    const iconSize = getIconSize(metro.population);
+                    
+                    // Create custom colored icon
+                    const customIcon = createColoredMarkerIcon(color, iconSize);
+                    marker.setIcon(customIcon);
+                }
+            });
+        }
+
+        // Function to create a colored marker icon with specified size
+        function createMarkerIcon(color, size = null) {
+            // Use a more reliable CDN for colored markers
+            const iconUrl = `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${color}.png`;
+            const shadowUrl = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png';
+            
+            // Use provided size or default
+            const iconSize = size || { width: 24, height: 39 };
+            const iconAnchorX = Math.floor(iconSize.width / 2);
+            const iconAnchorY = iconSize.height;
+            
+            return L.icon({
+                iconUrl: iconUrl,
+                shadowUrl: shadowUrl,
+                iconSize: [iconSize.width, iconSize.height],
+                iconAnchor: [iconAnchorX, iconAnchorY],
+                popupAnchor: [1, -iconSize.height + 7],
+                shadowSize: [41, 41],
+                className: `marker-icon-${color}` // Add class for potential CSS fallback
+            });
+        }
+
+        // Function to set marker color to blue (for selected marker)
+        function setMarkerColor(marker, color) {
+            if (marker) {
+                try {
+                    // Get the population from the marker to determine size
+                    // This ensures we use the same size tier as when the marker was created
+                    const population = marker._metroPopulation || 0;
+                    const iconSize = getIconSize(population);
+                    
+                    // Use blue color for selected marker (circular icon)
+                    const blueColor = 'rgb(0, 0, 255)'; // Blue
+                    const newIcon = createColoredMarkerIcon(blueColor, iconSize);
+                    marker.setIcon(newIcon);
+                    console.log('Marker color changed to blue (selected), size:', iconSize);
+                } catch (error) {
+                    console.error('Error setting marker color:', error);
+                }
+            }
+        }
+
+        // Function to restore marker to its metric-based color
+        function restoreMarkerColor(marker) {
+            if (!marker || !marker._metroData) {
+                return;
+            }
+
+            try {
+                const metro = marker._metroData;
+                const population = metro.population || 0;
+                const iconSize = getIconSize(population);
+                
+                // Get color based on selected metric
+                const value = getMetricValue(metro, currentColorMetric);
+                let markerColor = 'rgb(128, 128, 128)'; // Default gray if no data
+                
+                if (value > 0) {
+                    // Get min/max for all metros to calculate color
+                    const values = allMetroData
+                        .map(m => getMetricValue(m, currentColorMetric))
+                        .filter(v => v > 0 && !isNaN(v));
+                    if (values.length > 0) {
+                        const min = Math.min(...values);
+                        const max = Math.max(...values);
+                        markerColor = getColorForValue(value, min, max);
+                    }
+                }
+                
+                // Create colored icon
+                const newIcon = createColoredMarkerIcon(markerColor, iconSize);
+                marker.setIcon(newIcon);
+                console.log('Marker color restored to metric color:', markerColor);
+            } catch (error) {
+                console.error('Error restoring marker color:', error);
+            }
+        }
+
+        // Function to add a marker to the map for a metro area
+        function addMetroMarker(metroName, state, coordinates, population = null, metroData = null) {
+            // Determine icon size based on population
+            const iconSize = getIconSize(population);
+            
+            // Get color based on selected metric
+            let markerColor = 'rgb(128, 128, 128)'; // Default gray if no data
+            if (metroData && currentColorMetric) {
+                const value = getMetricValue(metroData, currentColorMetric);
+                if (value > 0) {
+                    // Get min/max for all metros to calculate color
+                    const values = allMetroData
+                        .map(m => getMetricValue(m, currentColorMetric))
+                        .filter(v => v > 0 && !isNaN(v));
+                    if (values.length > 0) {
+                        const min = Math.min(...values);
+                        const max = Math.max(...values);
+                        markerColor = getColorForValue(value, min, max);
+                    }
+                }
+            }
+            
+            // Create marker with colored icon
+            const popupText = population 
+                ? `<strong>${metroName}</strong><br>${state}<br>Population: ${population.toLocaleString()}`
+                : `<strong>${metroName}</strong><br>${state}`;
+            
+            const marker = L.marker(coordinates, {
+                icon: createColoredMarkerIcon(markerColor, iconSize)
+            })
+                .bindPopup(popupText)
+                .on('click', function() {
+                    // When marker is clicked, show metro details in SearchResultPanel (updates in place)
+                    console.log('Map marker clicked:', metroName);
+                    if (window.setSelectedMetro) {
+                        console.log('Calling setSelectedMetro with:', metroName);
+                        window.setSelectedMetro(metroName);
+                        // No scrolling needed - statistics panel is side-by-side
+                    } else {
+                        console.error('setSelectedMetro function not available yet. React may not be loaded.');
+                        console.log('Available window properties:', Object.keys(window).filter(k => k.includes('set')));
+                    }
+                });
+            
+            // Store data with marker for filtering and coloring
+            marker._metroPopulation = population;
+            marker._metroName = metroName;
+            marker._metroData = metroData;
+            
+            // Add marker directly to map
+            marker.addTo(mapInstance);
+            
+            // Store marker for later reference
+            const key = `${state}_${metroName}`;
+            metroMarkers[key] = marker;
+            // Also store by metro name for easier lookup
+            metroMarkersByName[metroName] = marker;
+        }
+
+        // Function to apply population filter to markers
+        function applyPopulationFilter() {
+            if (!mapInstance || allMetroData.length === 0) {
+                console.log('Cannot apply filter: map or metro data not ready');
+                return;
+            }
+
+            console.log(`Applying population filter: >= ${currentPopulationFilter.toLocaleString()}`);
+            console.log(`Total metros in data: ${allMetroData.length}`);
+            
+            // Remove all existing markers from map
+            Object.values(metroMarkers).forEach(marker => {
+                mapInstance.removeLayer(marker);
+            });
+            
+            // Clear marker storage
+            metroMarkers = {};
+            metroMarkersByName = {};
+            
+            // Reset selected marker if it exists
+            selectedMarker = null;
+            selectedMarkerKey = null;
+            
+            // Add markers that meet the population threshold
+            let visibleCount = 0;
+            let filteredOutCount = 0;
+            allMetroData.forEach(metro => {
+                // Debug first few metros
+                if (visibleCount < 3) {
+                    console.log(`Metro: ${metro.name}, Population: ${metro.population}, Filter: ${currentPopulationFilter}, Passes: ${metro.population >= currentPopulationFilter}`);
+                }
+                
+                if (metro.population >= currentPopulationFilter) {
+                    addMetroMarker(metro.name, metro.state, metro.coordinates, metro.population, metro);
+                    visibleCount++;
+                } else {
+                    filteredOutCount++;
+                }
+            });
+            
+            console.log(`Filtered to ${visibleCount} metros (out of ${allMetroData.length} total)`);
+            console.log(`Filtered out: ${filteredOutCount} metros`);
+            
+            if (visibleCount === 0) {
+                console.warn(`WARNING: No metros match the filter (>= ${currentPopulationFilter.toLocaleString()})`);
+                console.log('Sample metro populations:', allMetroData.slice(0, 5).map(m => ({name: m.name, pop: m.population})));
+            }
+            
+            // Apply color scheme after adding markers
+            applyColorScheme();
+            
+            // Hide loading indicator after markers are added and colored (only on initial load)
+            if (isInitialLoad) {
+                const markerCount = Object.keys(metroMarkers).length;
+                console.log(`applyPopulationFilter complete: ${markerCount} markers added, isInitialLoad=${isInitialLoad}`);
+                
+                // Use a delay to ensure markers are fully rendered on the map
+                // Check multiple times to ensure markers are actually visible
+                let attempts = 0;
+                const maxAttempts = 5;
+                
+                const checkAndHide = () => {
+                    attempts++;
+                    const overlay = document.getElementById('map-loading-overlay');
+                    const finalMarkerCount = Object.keys(metroMarkers).length;
+                    
+                    // Also check if markers are actually on the Leaflet map
+                    let markersOnMap = 0;
+                    if (mapInstance) {
+                        mapInstance.eachLayer((layer) => {
+                            if (layer instanceof L.Marker) {
+                                markersOnMap++;
+                            }
+                        });
+                    }
+                    
+                    console.log(`Attempt ${attempts}: ${finalMarkerCount} markers in storage, ${markersOnMap} markers on map`);
+                    
+                    if (overlay) {
+                        if (finalMarkerCount > 0 || markersOnMap > 0 || attempts >= maxAttempts) {
+                            // Hide using multiple methods to ensure it works
+                            overlay.style.display = 'none';
+                            overlay.style.visibility = 'hidden';
+                            overlay.setAttribute('hidden', 'true');
+                            console.log(`✓ Loading indicator hidden - ${finalMarkerCount} markers in storage, ${markersOnMap} markers on map (attempt ${attempts})`);
+                            isInitialLoad = false; // Reset flag after hiding
+                        } else if (attempts < maxAttempts) {
+                            // Try again after a short delay
+                            setTimeout(checkAndHide, 300);
+                        } else {
+                            // Force hide after max attempts
+                            overlay.style.display = 'none';
+                            overlay.style.visibility = 'hidden';
+                            overlay.setAttribute('hidden', 'true');
+                            console.log(`✓ Loading indicator force-hidden after ${maxAttempts} attempts`);
+                            isInitialLoad = false;
+                        }
+                    } else {
+                        console.error('map-loading-overlay element not found!');
+                    }
+                };
+                
+                // Start checking after initial delay
+                setTimeout(checkAndHide, 500);
+            }
+        }
+
+        // Function to highlight selected marker
+        function highlightSelectedMarker(metroName) {
+            console.log('highlightSelectedMarker called with:', metroName);
+            
+            // Reset previous selected marker to its metric-based color
+            if (selectedMarker) {
+                console.log('Resetting previous marker to metric color');
+                restoreMarkerColor(selectedMarker);
+            }
+            
+            // Find and highlight new selected marker
+            selectedMarker = null;
+            selectedMarkerKey = null;
+            
+            // Strategy 1: Direct lookup by metro name (fastest)
+            if (metroMarkersByName[metroName]) {
+                selectedMarker = metroMarkersByName[metroName];
+                // Find the key for this marker
+                for (const [key, marker] of Object.entries(metroMarkers)) {
+                    if (marker === selectedMarker) {
+                        selectedMarkerKey = key;
+                        break;
+                    }
+                }
+                setMarkerColor(selectedMarker, 'blue');
+                console.log('Found marker by direct name lookup:', metroName);
+                return;
+            }
+            
+            // Strategy 2: Try matching by popup content
+            for (const [key, marker] of Object.entries(metroMarkers)) {
+                try {
+                    const popupContent = marker.getPopup().getContent();
+                    if (popupContent.includes(metroName)) {
+                        selectedMarker = marker;
+                        selectedMarkerKey = key;
+                        setMarkerColor(marker, 'blue');
+                        console.log('Found marker by popup content:', key);
+                        return;
+                    }
+                } catch (e) {
+                    console.warn('Error getting popup content for marker:', key, e);
+                }
+            }
+            
+            // Strategy 3: Partial match by key
+            const normalizedMetroName = metroName.replace(/[,\s]/g, '_').toLowerCase();
+            for (const [key, marker] of Object.entries(metroMarkers)) {
+                const normalizedKey = key.toLowerCase();
+                if (normalizedKey.endsWith('_' + normalizedMetroName) || 
+                    normalizedKey.includes('_' + normalizedMetroName)) {
+                    selectedMarker = marker;
+                    selectedMarkerKey = key;
+                    setMarkerColor(marker, 'green');
+                    console.log('Found marker by key match:', key);
+                    return;
+                }
+            }
+            
+            console.warn('Could not find marker for metro:', metroName);
+            console.log('Available markers by name:', Object.keys(metroMarkersByName));
+            console.log('Available marker keys:', Object.keys(metroMarkers));
+        }
+
+        // Make function globally available
+        window.highlightSelectedMarker = highlightSelectedMarker;
+
+        // Function to scroll to the metro section (no longer needed - updating in place)
+        // Removed scroll behavior since statistics are now side-by-side with map
+    </script>
+
+    <!-- Table View scripts -->
+    <!-- <script src="scripts/database_api.js"></script>
+    <script src="scripts/query.js"></script> -->
+
+    <!-- Metro Statistics scripts -->
+    <script src="scripts/metro_piechart.js"></script>
+    <script src="scripts/metro_stackedbarchart.js"></script>
+    <script src="scripts/metro_linechart.js"></script>
+    <script src="scripts/metro_api.js"></script>
+    <script type="text/babel" src="scripts/metro.js"></script>
+
+    <!-- Scatterplot scripts -->
+    <!-- <script src="scatterplot/scatter_api.js"></script>
+    <script src="scatterplot/scatterplot.js"></script>
+    <script type="text/babel" src="scatterplot/scatterpage.js"></script> -->
+
+</body>
+</html>
