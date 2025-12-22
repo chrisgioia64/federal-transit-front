@@ -1,3 +1,4 @@
+import { API_URL } from './config_api.js';
 
 async function setStatesAPI(setStates) {
     var requestOptions = {
@@ -51,7 +52,7 @@ async function setMetroAllAPI(setMetros) {
 }
 
 
-async function setMetroInfoAPI(setMetros, metro) {
+export async function setMetroInfoAPI(setMetros, metro) {
     var myHeaders = new Headers();
     myHeaders.append("Content-Type", "application/json");
 
@@ -78,7 +79,7 @@ async function setMetroInfoAPI(setMetros, metro) {
     return json;
 }
 
-async function setMetroTransitTypeInfoAPI(setMetros, metro) {
+export async function setMetroTransitTypeInfoAPI(setMetros, metro) {
   var myHeaders = new Headers();
   myHeaders.append("Content-Type", "application/json");
 
@@ -214,7 +215,7 @@ async function setLineGraphDataApiByMonth(setGraphData, ntdId, mode, tos) {
 }
 
 
-async function setPieChartTransitModesAPI(setChart, metro, statistic) {
+export async function setPieChartTransitModesAPI(setChart, metro, statistic) {
   var myHeaders = new Headers();
   myHeaders.append("Content-Type", "application/json");
 
@@ -238,7 +239,7 @@ async function setPieChartTransitModesAPI(setChart, metro, statistic) {
   return json;
 }
 
-async function setTransitModesAPI(setTransit, metro, statistic) {
+export async function setTransitModesAPI(setTransit, metro, statistic) {
   var myHeaders = new Headers();
   myHeaders.append("Content-Type", "application/json");
 
@@ -309,7 +310,7 @@ async function setStackedBartChartTransitModesAPI(setChart, metro, statistic) {
   return json;
 }
 
-async function setStackedBartChartTransitModesAPIYear(setChart, metro, statistic, year) {
+export async function setStackedBartChartTransitModesAPIYear(setChart, metro, statistic, year) {
   var myHeaders = new Headers();
   myHeaders.append("Content-Type", "application/json");
 
@@ -337,7 +338,7 @@ async function setStackedBartChartTransitModesAPIYear(setChart, metro, statistic
   return json;
 }
 
-async function setStackedBartChartAgency(setChart, metro) {
+export async function setStackedBartChartAgency(setChart, metro) {
   var myHeaders = new Headers();
   myHeaders.append("Content-Type", "application/json");
 
@@ -364,7 +365,7 @@ async function setStackedBartChartAgency(setChart, metro) {
 }
 
 
-async function setYearsForMetro(setYears, metro, statistic) {
+export async function setYearsForMetro(setYears, metro, statistic) {
   var myHeaders = new Headers();
   myHeaders.append("Content-Type", "application/json");
 

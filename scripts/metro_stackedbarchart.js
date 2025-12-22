@@ -1,7 +1,7 @@
 // Copyright 2021 Observable, Inc.
 // Released under the ISC license.
 // https://observablehq.com/@d3/stacked-horizontal-bar-chart
-function StackedBarChart(data, {
+export function StackedBarChart(data, {
     x = d => d, // given d in data, returns the (quantitative) x-value
     y = (d, i) => i, // given d in data, returns the (ordinal) y-value
     z = () => 1, // given d in data, returns the (categorical) z-value

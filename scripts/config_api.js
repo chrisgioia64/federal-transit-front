@@ -1,15 +1,15 @@
 /**
  * API Configuration
  * 
- * Set USE_REMOTE to true to use the remote API, false for local development
+ * Uses Vite environment variables for API URL configuration
+ * - VITE_API_URL from .env or .env.local
+ * - .env.local takes precedence over .env
  */
-const USE_REMOTE = false;
-
-// API URL configuration
-const API_URL = USE_REMOTE 
-    ? 'https://z43i39stug.us-east-1.awsapprunner.com/'  // Remote API (if deployed)
-    : 'http://localhost:5000';           // Local Spring Boot backend
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 console.log('API URL configured:', API_URL);
+
+// Export API_URL for use in other modules
+export { API_URL };
 
 

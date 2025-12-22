@@ -1,6 +1,15 @@
-
-const useState = React.useState;
-const useEffect = React.useEffect;
+import { useState, useEffect } from 'react';
+import { createRoot } from 'react-dom/client';
+import { 
+    setMetroInfoAPI,
+    setMetroTransitTypeInfoAPI, 
+    setPieChartTransitModesAPI, 
+    setTransitModesAPI, 
+    setStackedBartChartTransitModesAPIYear,
+    setYearsForMetro,
+    setStackedBartChartAgency
+} from './metro_api.js';
+import { StackedBarChart } from './metro_stackedbarchart.js';
 
 function OurApp() {
     return (
@@ -43,10 +52,16 @@ function MetroDetailsApp() {
             }
         };
         
+        // Signal that React is ready (for Vite/module loading timing)
+        window.reactReady = true;
+        window.dispatchEvent(new CustomEvent('reactReady'));
+        console.log('React component mounted - setSelectedMetro is now available');
+        
         // Cleanup on unmount
         return () => {
             delete window.setSelectedMetro;
             delete window.currentSelectedMetro;
+            window.reactReady = false;
         };
     }, []);
 
@@ -1127,7 +1142,7 @@ function DetailedAnalysisCharts(props) {
 // Render MetroDetailsApp to metro-root (for map integration)
 const metroRootContainer = document.querySelector("#metro-root");
 if (metroRootContainer) {
-    const metroRoot = ReactDOM.createRoot(metroRootContainer);
+    const metroRoot = createRoot(metroRootContainer);
     metroRoot.render(<MetroDetailsApp />);
 } else {
     console.warn("metro-root container not found. MetroDetailsApp will not render.");
@@ -1136,7 +1151,7 @@ if (metroRootContainer) {
 // Render DetailedAnalysisCharts to metro-charts-root
 const metroChartsContainer = document.querySelector("#metro-charts-root");
 if (metroChartsContainer) {
-    window.metroChartsRoot = ReactDOM.createRoot(metroChartsContainer);
+    window.metroChartsRoot = createRoot(metroChartsContainer);
     window.metroChartsRoot.render(<DetailedAnalysisCharts />);
 } else {
     console.warn("metro-charts-root container not found. DetailedAnalysisCharts will not render.");
@@ -1145,6 +1160,6 @@ if (metroChartsContainer) {
 // Render OurApp to app container if it exists (for standalone state/card view)
 const appContainer = document.querySelector("#app");
 if (appContainer) {
-    const appRoot = ReactDOM.createRoot(appContainer);
+    const appRoot = createRoot(appContainer);
     appRoot.render(<OurApp />);
 }

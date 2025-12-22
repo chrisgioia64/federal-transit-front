@@ -574,9 +574,10 @@
     <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
 
-    <script src="scripts/config_api.js"></script>
-
-    <script>
+    <script type="module">
+        // Import API_URL from config_api.js
+        import { API_URL } from './scripts/config_api.js';
+        
         /*
          * MAP DATA POPULATION GUIDE
          * ========================
@@ -1314,6 +1315,42 @@
             }
         }
 
+        // Set up React ready event listener once (for Vite module loading timing)
+        let reactReadyHandler = null;
+        if (!window.reactReadyListenerSetup) {
+            window.reactReadyListenerSetup = true;
+            window.addEventListener('reactReady', function() {
+                console.log('React ready event received - setSelectedMetro should now be available');
+            });
+        }
+
+        // Function to call setSelectedMetro with retry logic (handles Vite module loading timing)
+        function callSetSelectedMetro(metroName, retries = 50, delay = 100) {
+            if (window.setSelectedMetro && typeof window.setSelectedMetro === 'function') {
+                console.log('Calling setSelectedMetro with:', metroName);
+                try {
+                    window.setSelectedMetro(metroName);
+                    return true;
+                } catch (error) {
+                    console.error('Error calling setSelectedMetro:', error);
+                    return false;
+                }
+            } else if (retries > 0) {
+                if (retries % 10 === 0) { // Log every 10th retry to reduce console spam
+                    console.log(`setSelectedMetro not available yet, retrying... (${retries} retries left)`);
+                }
+                setTimeout(() => callSetSelectedMetro(metroName, retries - 1, delay), delay);
+                return false;
+            } else {
+                console.error('setSelectedMetro function not available after retries. React may not be loaded.');
+                console.log('Available window properties:', Object.keys(window).filter(k => k.includes('set')));
+                console.log('Checking if React is loaded:', typeof React !== 'undefined' ? 'Yes' : 'No');
+                console.log('Checking if ReactDOM is loaded:', typeof ReactDOM !== 'undefined' ? 'Yes' : 'No');
+                console.log('React ready flag:', window.reactReady);
+                return false;
+            }
+        }
+
         // Function to add a marker to the map for a metro area
         function addMetroMarker(metroName, state, coordinates, population = null, metroData = null) {
             // Determine icon size based on population
@@ -1348,14 +1385,8 @@
                 .on('click', function() {
                     // When marker is clicked, show metro details in SearchResultPanel (updates in place)
                     console.log('Map marker clicked:', metroName);
-                    if (window.setSelectedMetro) {
-                        console.log('Calling setSelectedMetro with:', metroName);
-                        window.setSelectedMetro(metroName);
-                        // No scrolling needed - statistics panel is side-by-side
-                    } else {
-                        console.error('setSelectedMetro function not available yet. React may not be loaded.');
-                        console.log('Available window properties:', Object.keys(window).filter(k => k.includes('set')));
-                    }
+                    callSetSelectedMetro(metroName);
+                    // No scrolling needed - statistics panel is side-by-side
                 });
             
             // Store data with marker for filtering and coloring
@@ -1556,11 +1587,11 @@
     <script src="scripts/query.js"></script> -->
 
     <!-- Metro Statistics scripts -->
-    <script src="scripts/metro_piechart.js"></script>
-    <script src="scripts/metro_stackedbarchart.js"></script>
-    <script src="scripts/metro_linechart.js"></script>
-    <script src="scripts/metro_api.js"></script>
-    <script type="text/babel" src="scripts/metro.js"></script>
+    <script type="module" src="scripts/metro_piechart.js"></script>
+    <script type="module" src="scripts/metro_stackedbarchart.js"></script>
+    <script type="module" src="scripts/metro_linechart.js"></script>
+    <script type="module" src="scripts/metro_api.js"></script>
+    <script type="module" src="scripts/metro.jsx"></script>
 
     <!-- Scatterplot scripts -->
     <!-- <script src="scatterplot/scatter_api.js"></script>
