@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
 import { 
     setMetroInfoAPI,
@@ -947,27 +947,160 @@ function MetroAreaTableRow(props) {
 function MetroAreaStackedBarChart(props) {
     const [chart, setChart] = useState([]);
     const [years, setYears] = useState([]);
+    const [maxValue, setMaxValue] = useState(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [currentYearIndex, setCurrentYearIndex] = useState(0);
+    const [speed, setSpeed] = useState(0.5); // seconds per year
+    const [loop, setLoop] = useState(true);
+    const animationIntervalRef = React.useRef(null);
+    const yearsSortedRef = React.useRef(false);
 
     let cardId = "metro_card_stacked_bar_" + props.metro.replaceAll(" ","").replaceAll(",","_");
     let selectId = "metro_card_select_" + props.metro.replaceAll(" ","").replaceAll(",","_");
+    let playPauseId = "play_pause_" + props.metro.replaceAll(" ","").replaceAll(",","_");
+    let speedId = "speed_" + props.metro.replaceAll(" ","").replaceAll(",","_");
+    let yearDisplayId = "year_display_" + props.metro.replaceAll(" ","").replaceAll(",","_");
+    let loopId = "loop_" + props.metro.replaceAll(" ","").replaceAll(",","_");
+
+    // Calculate max value across all years for standardized scale
+    useEffect(() => {
+        if (props.metro && years.length > 0) {
+            calculateMaxValue();
+        }
+    }, [props.metro, years]);
+
+    async function calculateMaxValue() {
+        let max = 0;
+        for (const year of years) {
+            try {
+                const json = await setStackedBartChartTransitModesAPIYear(null, props.metro, "UPT", year);
+                if (json && json.length > 0) {
+                    // Group by agency and sum all travel modes for each agency
+                    const agencyTotals = {};
+                    json.forEach(d => {
+                        if (!agencyTotals[d.agencyName]) {
+                            agencyTotals[d.agencyName] = 0;
+                        }
+                        agencyTotals[d.agencyName] += d.amount;
+                    });
+                    // Find the maximum total across all agencies for this year
+                    const yearMax = Math.max(...Object.values(agencyTotals));
+                    max = Math.max(max, yearMax);
+                }
+            } catch (error) {
+                console.error(`Error fetching data for year ${year}:`, error);
+            }
+        }
+        setMaxValue(max / 1000000); // Convert to millions
+    }
 
     useEffect(() => {
         if (props.metro) {
+            yearsSortedRef.current = false; // Reset sorting flag when metro changes
             setYearsApi(setYears, props.metro);
         }
     }, [props.metro]);
 
+    // Sort years in ascending order (earliest first) when they're first loaded
     useEffect(() => {
-        if (years.length > 0) {
+        if (years.length > 0 && !yearsSortedRef.current) {
+            const sortedYears = [...years].sort((a, b) => a - b);
+            // Check if years need sorting
+            const isUnsorted = sortedYears.some((year, index) => year !== years[index]);
+            if (isUnsorted) {
+                setYears(sortedYears);
+                setCurrentYearIndex(0); // Reset to earliest year
+                yearsSortedRef.current = true;
+            } else {
+                yearsSortedRef.current = true;
+            }
+        }
+    }, [years]);
+
+    // Define updateChart function before it's used
+    const updateChart = useCallback(() => {
+        if (years.length > 0 && maxValue !== null) {
+            const yearSelect = document.querySelector("#" + selectId);
+            if (yearSelect) {
+                updateStackedBarChart(cardId, chart, setChart, props.metro, yearSelect.value, maxValue);
+            }
+        }
+    }, [years, maxValue, props.metro]);
+
+    // Initialize currentYearIndex when years are loaded
+    useEffect(() => {
+        if (years.length > 0 && currentYearIndex === 0) {
+            const yearSelect = document.querySelector("#" + selectId);
+            if (yearSelect) {
+                yearSelect.value = years[0];
+            }
+        }
+    }, [years]);
+
+    useEffect(() => {
+        if (years.length > 0 && maxValue !== null) {
             updateChart();
         }
-    }, [years, props.metro]);
+    }, [years, props.metro, maxValue, updateChart]);
 
-    function updateChart() {
-        if (years.length > 0) {
-            const yearSelect = document.querySelector("#" + selectId);
-            updateStackedBarChart(cardId, chart, setChart, props.metro, yearSelect.value);
+    // Animation control
+    useEffect(() => {
+        if (isPlaying && years.length > 0) {
+            animationIntervalRef.current = setInterval(() => {
+                setCurrentYearIndex(prev => {
+                    const nextIndex = prev + 1;
+                    if (nextIndex >= years.length) {
+                        if (loop) {
+                            return 0;
+                        } else {
+                            setIsPlaying(false);
+                            return prev;
+                        }
+                    }
+                    return nextIndex;
+                });
+            }, speed * 1000);
+        } else {
+            if (animationIntervalRef.current) {
+                clearInterval(animationIntervalRef.current);
+                animationIntervalRef.current = null;
+            }
         }
+
+        return () => {
+            if (animationIntervalRef.current) {
+                clearInterval(animationIntervalRef.current);
+            }
+        };
+    }, [isPlaying, speed, loop, years.length]);
+
+    // Update chart when currentYearIndex changes
+    useEffect(() => {
+        if (isPlaying && years.length > 0 && currentYearIndex < years.length) {
+            const yearSelect = document.querySelector("#" + selectId);
+            if (yearSelect) {
+                yearSelect.value = years[currentYearIndex];
+                updateChart();
+            }
+        }
+    }, [currentYearIndex, isPlaying, updateChart, years, selectId]);
+
+    function togglePlayPause() {
+        setIsPlaying(!isPlaying);
+    }
+
+    function handleSpeedChange(e) {
+        setSpeed(parseFloat(e.target.value));
+    }
+
+    function handleLoopChange(e) {
+        setLoop(e.target.checked);
+    }
+
+    function handleYearSelectChange(e) {
+        setIsPlaying(false);
+        setCurrentYearIndex(years.indexOf(parseInt(e.target.value)));
+        updateChart();
     }
 
     return (
@@ -980,14 +1113,54 @@ function MetroAreaStackedBarChart(props) {
                 </svg>
                 <span className="rank-tooltip">Ridership is measured in Unlinked Passenger Trips (UPT), where each boarding counts as one trip.</span>
             </span>
-            <div>
-                <select id={selectId} onChange={updateChart}>
-                {years.map(function(year) {
+            <div style={{display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem', flexWrap: 'wrap'}}>
+                <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                    <select id={selectId} onChange={handleYearSelectChange} style={{padding: '0.25rem 0.5rem'}}>
+                        {years.map(function(year) {
                             return <YearOption year={year} />;
-                            })
-                }
-                </select>
-
+                        })}
+                    </select>
+                </div>
+                <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                    <button 
+                        id={playPauseId}
+                        onClick={togglePlayPause}
+                        style={{
+                            padding: '0.25rem 0.5rem',
+                            fontSize: '0.875rem',
+                            border: '1px solid #dee2e6',
+                            borderRadius: '0.25rem',
+                            backgroundColor: isPlaying ? '#dc3545' : '#1a237e',
+                            color: 'white',
+                            cursor: 'pointer',
+                            height: 'fit-content',
+                            display: 'flex',
+                            alignItems: 'center',
+                            width: '70px',
+                            justifyContent: 'center'
+                        }}
+                    >
+                        {isPlaying ? 'Pause' : 'Play'}
+                    </button>
+                </div>
+                <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                    <label htmlFor={speedId} style={{margin: 0, fontSize: '0.9rem'}}>Speed:</label>
+                    <select id={speedId} onChange={handleSpeedChange} value={speed} style={{padding: '0.25rem 0.5rem'}}>
+                        <option value="1">Slow (1s)</option>
+                        <option value="0.5">Medium (0.5s)</option>
+                        <option value="0.25">Fast (0.25s)</option>
+                    </select>
+                </div>
+                <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                    <input 
+                        type="checkbox" 
+                        id={loopId}
+                        checked={loop}
+                        onChange={handleLoopChange}
+                        style={{cursor: 'pointer'}}
+                    />
+                    <label htmlFor={loopId} style={{margin: 0, fontSize: '0.9rem', cursor: 'pointer'}}>Loop</label>
+                </div>
             </div>
             <div id={cardId}></div>
             <div id={cardId + "_legend"} className="stacked-bar-legend" style={{display: 'flex', flexWrap: 'wrap', gap: '15px', marginTop: '15px', justifyContent: 'center'}}></div>
@@ -1025,7 +1198,7 @@ const TRAVEL_MODE_NAMES = {
     VP: "Vanpool"
 };
 
-async function updateStackedBarChart(chart_id, chart, setChart, metro, year) {
+async function updateStackedBarChart(chart_id, chart, setChart, metro, year, maxValue = null) {
     let json = await setStackedBartChartTransitModesAPIYear(setChart, metro, "UPT", year)
     let data = json;
     let width = 1500;
@@ -1039,12 +1212,18 @@ async function updateStackedBarChart(chart_id, chart, setChart, metro, year) {
     s.forEach(a => { ages.push(a);
                       });
     
+    // Use standardized max value if provided, otherwise calculate from current data
+    let xDomain = null;
+    if (maxValue !== null && maxValue > 0) {
+        xDomain = [0, maxValue];
+    }
     
     chart = StackedBarChart(data, {
         x: d => d.amount / 1000000,
         y: d => d.agencyName,
         z: d => d.travelMode,
         xLabel: "UPT (millions)",
+        xDomain: xDomain, // Standardized scale across all years
         yDomain: d3.groupSort(data, D => d3.sum(D, d => d.amount), d => d.agencyName), // sort y by x
         zDomain: ages,
         colors: d3.schemeSpectral[ages.length],

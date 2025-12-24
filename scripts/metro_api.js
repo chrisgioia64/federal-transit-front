@@ -336,7 +336,9 @@ export async function setStackedBartChartTransitModesAPIYear(setChart, metro, st
   let response = await fetch(API_URL + "/query/stacked_bar_chart_by_year", requestOptions);
   let json = await response.json();
   if (response.status == 200) {
-    setChart(json);
+    if (setChart) {
+      setChart(json);
+    }
     console.log("stacked bar chart by year: " + json);
   } else {
     console.log("error: " + response.status);
