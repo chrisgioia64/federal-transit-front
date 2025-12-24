@@ -750,7 +750,7 @@ function MetroAreaPopulationArea(props) {
                     </svg>
 
                 </td>
-                <td className="table_col_attribute">Trips per Person</td>
+                <td className="table_col_attribute">Trips per Capita</td>
                   <td className="table_col_total">{metros.length == 0 ? 0 : metros[0].perCapitaAmount.toFixed(1)}</td>
                   <td className="table_col_total_rank">{metros.length == 0 ? 0 : metros[0].perCapitaRank.toLocaleString()}</td>
                 <td className="table_col_other"></td>
@@ -929,6 +929,7 @@ function MetroAreaStackedBarChart(props) {
 
             </div>
             <div id={cardId}></div>
+            <div id={cardId + "_legend"} className="stacked-bar-legend" style={{display: 'flex', flexWrap: 'wrap', gap: '15px', marginTop: '15px', justifyContent: 'center'}}></div>
         </div>
         
     );
@@ -947,6 +948,21 @@ function YearOption(props) {
 async function setYearsApi(setYears, metro) {
     let json = await setYearsForMetro(setYears, metro, "UPT");
 }
+
+// Travel mode abbreviation to full name mapping
+const TRAVEL_MODE_NAMES = {
+    CB: "Commuter Bus",
+    MB: "Metro Bus",
+    LR: "Light Rail",
+    RB: "Bus Rapid Transit",
+    SR: "Streetcar",
+    MG: "Monorail",
+    CR: "Commuter Rail",
+    DR: "Demand Response",
+    FB: "Ferry Boat",
+    TB: "Trolley Bus",
+    VP: "Vanpool"
+};
 
 async function updateStackedBarChart(chart_id, chart, setChart, metro, year) {
     let json = await setStackedBartChartTransitModesAPIYear(setChart, metro, "UPT", year)
@@ -978,6 +994,38 @@ async function updateStackedBarChart(chart_id, chart, setChart, metro, year) {
     let chartDiv = document.querySelector("#" + chart_id);
     chartDiv.innerHTML = "";
     chartDiv.append(chart);
+
+    // Create legend
+    let legendDiv = document.querySelector("#" + chart_id + "_legend");
+    if (legendDiv && chart.scales && chart.scales.color) {
+        legendDiv.innerHTML = "";
+        const colorScale = chart.scales.color;
+        
+        ages.forEach(mode => {
+            const legendItem = document.createElement("div");
+            legendItem.style.display = "flex";
+            legendItem.style.alignItems = "center";
+            legendItem.style.gap = "8px";
+            
+            const colorBox = document.createElement("div");
+            colorBox.style.width = "20px";
+            colorBox.style.height = "20px";
+            colorBox.style.backgroundColor = colorScale(mode);
+            colorBox.style.border = "1px solid #ccc";
+            colorBox.style.borderRadius = "3px";
+            colorBox.style.flexShrink = "0";
+            
+            const label = document.createElement("span");
+            label.textContent = TRAVEL_MODE_NAMES[mode] || mode;
+            label.style.fontSize = "0.9rem";
+            
+            legendItem.appendChild(colorBox);
+            legendItem.appendChild(label);
+            legendDiv.appendChild(legendItem);
+        });
+        
+        legendDiv.style.display = ages.length > 0 ? "flex" : "none";
+    }
 }
 
 async function setAgencyStat(setStat) {
@@ -1100,11 +1148,18 @@ async function updateStackedBarChartAgency(chart_id, chart, setChart, metro, sta
                       });
     
     
+    // For Farebox Recovery, always set xDomain to [0, 100] to cap at 100%
+    let xDomainOption = undefined;
+    if (stat.attribute === 'fareboxRecovery') {
+        xDomainOption = [0, 100];
+    }
+    
     chart = StackedBarChart(data, {
         x: stat.valueFunction,
         y: d => d.agencyName,
         z: d => d.travelMode,
         xLabel: stat.xLabel,
+        xDomain: xDomainOption,
         yDomain: d3.groupSort(data, D => d3.sum(D, stat.valueFunction), d => d.agencyName), // sort y by x
         zDomain: ages,
         colors: d3.schemeSpectral[ages.length],

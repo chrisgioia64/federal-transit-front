@@ -435,7 +435,7 @@
                         <div class="d-flex align-items-center gap-2">
                             <label for="color-metric" class="form-label mb-0 small">Color by Metric:</label>
                             <select id="color-metric" class="form-select form-select-sm" style="max-width: 250px;">
-                                <option value="trips">Trips per Person</option>
+                                <option value="trips">Trips per Capita</option>
                                 <option value="expenses" selected>Operating Expenses per Person</option>
                                 <option value="fares">Fares per Person</option>
                             </select>
@@ -1132,7 +1132,7 @@
         function getMetricDisplayName(metric) {
             switch(metric) {
                 case 'trips':
-                    return 'Trips per Person';
+                    return 'Trips per Capita';
                 case 'expenses':
                     return 'Operating Expenses per Person';
                 case 'fares':
@@ -1145,7 +1145,7 @@
         // Function to format metric value with units
         function formatMetricValue(value, metric) {
             if (metric === 'expenses' || metric === 'fares') {
-                return '$' + value.toFixed(1);
+                return '$' + value.toFixed(2);
             }
             return value.toFixed(1);
         }
