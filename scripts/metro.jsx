@@ -34,6 +34,16 @@ function MetroDetailsApp() {
             // Store metro name globally for DetailedAnalysisCharts
             window.currentSelectedMetro = metroName;
             
+            // Highlight the selected marker on the map (green) or restore if deselected
+            if (window.highlightSelectedMarker) {
+                if (metroName) {
+                    window.highlightSelectedMarker(metroName);
+                } else {
+                    // If metroName is null/undefined, restore all markers
+                    window.highlightSelectedMarker(null);
+                }
+            }
+            
             // Update Agency tab title
             const titleElement = document.getElementById('agency-tab-title');
             if (titleElement) {
@@ -962,7 +972,14 @@ function MetroAreaStackedBarChart(props) {
 
     return (
         <div className="stacked_bar_chart_div">
-            <h5>UPT Usage by Agency/Travel Mode</h5>
+            <h5 style={{display: 'inline-block', marginRight: '8px'}}>Ridership by Agency and Travel Mode</h5>
+            <span className="rank-info-icon" style={{verticalAlign: 'middle'}}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" style={{verticalAlign: 'middle', cursor: 'help'}}>
+                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                    <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0"/>
+                </svg>
+                <span className="rank-tooltip">Ridership is measured in Unlinked Passenger Trips (UPT), where each boarding counts as one trip.</span>
+            </span>
             <div>
                 <select id={selectId} onChange={updateChart}>
                 {years.map(function(year) {
@@ -1121,7 +1138,7 @@ function MetroAreaStackedBarChartAgency(props) {
 
     return (
         <div className="stacked_bar_chart_div">
-            <h5>Statistics by Agency</h5>
+            <h5>Operational Statistics by Agency</h5>
             <div>
                 <select id={selectId} onChange={updateChart}>
                 {stats.map(function(stat) {

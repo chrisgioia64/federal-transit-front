@@ -180,8 +180,8 @@
         }
 
         .metro_card_title {
-            background-color: #e3f2fd;
-            border-bottom: 1px solid #bbdefb;
+            background-color: #fff9e6;
+            border-bottom: 1px solid #ffd54f;
             padding: 1rem 1.5rem;
             border-radius: 8px 8px 0 0;
         }
@@ -371,6 +371,24 @@
             /* Use GPU acceleration for smoother rendering */
             will-change: width;
             transform: translateZ(0);
+        }
+
+        /* Faded colors for Transit Usage stacked chart */
+        .transit_usage_full_width .progress-bar {
+            opacity: 0.6;
+        }
+
+        .transit_usage_full_width .progress-bar.bg-success {
+            background-color: rgba(25, 135, 84, 0.5) !important;
+        }
+
+        .transit_usage_full_width .progress-bar.bg-warning {
+            background-color: rgba(255, 193, 7, 0.5) !important;
+        }
+
+        /* Rail (default progress-bar) - make it a faded blue */
+        .transit_usage_full_width .progress-bar:not(.bg-success):not(.bg-warning) {
+            background-color: rgba(13, 110, 253, 0.5) !important;
         }
 
         /* Rank Info Icon and Tooltip */
@@ -1457,9 +1475,9 @@
             // Update legend
             updateLegend();
 
-            // Update all markers except the selected one (which stays blue)
+            // Update all markers except the selected one (which stays yellow/gold)
             Object.entries(metroMarkers).forEach(([key, marker]) => {
-                // Skip selected marker (keep it blue)
+                // Skip selected marker (keep it yellow/gold)
                 if (marker === selectedMarker) {
                     return;
                 }
@@ -1502,7 +1520,7 @@
             });
         }
 
-        // Function to set marker color to blue (for selected marker)
+        // Function to set marker color to yellow/gold (for selected marker)
         function setMarkerColor(marker, color) {
             if (marker) {
                 try {
@@ -1511,11 +1529,11 @@
                     const population = marker._metroPopulation || 0;
                     const iconSize = getIconSize(population);
                     
-                    // Use blue color for selected marker (circular icon)
-                    const blueColor = 'rgb(0, 0, 255)'; // Blue
-                    const newIcon = createColoredMarkerIcon(blueColor, iconSize);
+                    // Use yellow/gold color for selected marker (circular icon)
+                    const goldColor = 'rgb(255, 193, 7)'; // Yellow/Gold
+                    const newIcon = createColoredMarkerIcon(goldColor, iconSize);
                     marker.setIcon(newIcon);
-                    console.log('Marker color changed to blue (selected), size:', iconSize);
+                    console.log('Marker color changed to yellow/gold (selected), size:', iconSize);
                 } catch (error) {
                     console.error('Error setting marker color:', error);
                 }
@@ -1700,6 +1718,8 @@
                     // When marker is clicked, show metro details in SearchResultPanel (updates in place)
                     console.log('Map marker clicked:', metroName);
                     callSetSelectedMetro(metroName);
+                    // Highlight the selected marker in green
+                    highlightSelectedMarker(metroName);
                     // No scrolling needed - statistics panel is side-by-side
                 });
             
@@ -1839,6 +1859,12 @@
             selectedMarker = null;
             selectedMarkerKey = null;
             
+            // If metroName is null/undefined, just restore and return
+            if (!metroName) {
+                console.log('No metro selected, all markers restored to metric colors');
+                return;
+            }
+            
             // Strategy 1: Direct lookup by metro name (fastest)
             if (metroMarkersByName[metroName]) {
                 selectedMarker = metroMarkersByName[metroName];
@@ -1849,7 +1875,7 @@
                         break;
                     }
                 }
-                setMarkerColor(selectedMarker, 'blue');
+                setMarkerColor(selectedMarker, 'yellow');
                 console.log('Found marker by direct name lookup:', metroName);
                 return;
             }
@@ -1861,7 +1887,7 @@
                     if (popupContent.includes(metroName)) {
                         selectedMarker = marker;
                         selectedMarkerKey = key;
-                        setMarkerColor(marker, 'blue');
+                        setMarkerColor(marker, 'yellow');
                         console.log('Found marker by popup content:', key);
                         return;
                     }
@@ -1878,7 +1904,7 @@
                     normalizedKey.includes('_' + normalizedMetroName)) {
                     selectedMarker = marker;
                     selectedMarkerKey = key;
-                    setMarkerColor(marker, 'green');
+                    setMarkerColor(marker, 'yellow');
                     console.log('Found marker by key match:', key);
                     return;
                 }
