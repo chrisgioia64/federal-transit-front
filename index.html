@@ -180,8 +180,8 @@
         }
 
         .metro_card_title {
-            background-color: #e9ecef;
-            border-bottom: 1px solid #dee2e6;
+            background-color: #e3f2fd;
+            border-bottom: 1px solid #bbdefb;
             padding: 1rem 1.5rem;
             border-radius: 8px 8px 0 0;
         }
@@ -421,6 +421,72 @@
             opacity: 1;
         }
 
+        /* Custom Styled Map Popup (Blue Theme) */
+        .leaflet-popup-content-wrapper {
+            background: linear-gradient(135deg, rgba(26, 35, 126, 0.7) 0%, rgba(40, 53, 147, 0.7) 100%);
+            color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            padding: 0;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .leaflet-popup-content {
+            margin: 0;
+            padding: 1rem 1.25rem;
+            min-width: 200px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        .leaflet-popup-content .popup-header {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin: 0 0 0.5rem 0;
+            color: white;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+            padding-bottom: 0.5rem;
+        }
+
+        .leaflet-popup-content .popup-info {
+            font-size: 0.875rem;
+            margin: 0.375rem 0;
+            color: rgba(255, 255, 255, 0.9);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .leaflet-popup-content .popup-info-label {
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.95);
+            min-width: 80px;
+        }
+
+        .leaflet-popup-content .popup-info-value {
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        .leaflet-popup-content .popup-hint {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            text-align: center;
+            font-style: italic;
+        }
+
+        .leaflet-popup-tip {
+            background: rgba(26, 35, 126, 0.7);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .leaflet-popup-close-button {
+            display: none !important; /* Hide close button for hover tooltips */
+        }
+
         /* Stacked Bar Chart Containers */
         .stacked_bar_chart_div {
             margin-top: 2rem;
@@ -593,12 +659,12 @@
                                 <div id="color-legend" style="display: flex; align-items: center; justify-content: flex-end;">
                                     <div id="legend-content" class="d-flex align-items-center" style="gap: 10px; flex-wrap: wrap; visibility: hidden;">
                                         <div class="d-flex align-items-center" style="gap: 5px;">
-                                            <div style="width: 20px; height: 20px; border-radius: 50%; background-color: rgb(34, 139, 34); border: 1px solid white; box-shadow: 0 1px 2px rgba(0,0,0,0.2);"></div>
+                                            <div style="width: 20px; height: 20px; border-radius: 50%; background-color: rgb(240, 248, 255); border: 1px solid white; box-shadow: 0 1px 2px rgba(0,0,0,0.2);"></div>
                                             <span id="legend-min" style="font-size: 0.9rem;">Low</span>
                                         </div>
-                                        <div style="width: 150px; height: 20px; background: linear-gradient(to right, rgb(34, 139, 34), rgb(255, 215, 0), rgb(255, 255, 0), rgb(255, 140, 0), rgb(255, 0, 0)); border-radius: 0; border: 1px solid #ccc;"></div>
+                                        <div style="width: 150px; height: 20px; background: linear-gradient(to right, rgb(240, 248, 255), rgb(135, 206, 250), rgb(70, 130, 180), rgb(25, 25, 112), rgb(0, 0, 139)); border-radius: 0; border: 1px solid #ccc;"></div>
                                         <div class="d-flex align-items-center" style="gap: 5px;">
-                                            <div style="width: 20px; height: 20px; border-radius: 50%; background-color: rgb(255, 0, 0); border: 1px solid white; box-shadow: 0 1px 2px rgba(0,0,0,0.2);"></div>
+                                            <div style="width: 20px; height: 20px; border-radius: 50%; background-color: rgb(0, 0, 139); border: 1px solid white; box-shadow: 0 1px 2px rgba(0,0,0,0.2);"></div>
                                             <span id="legend-max" style="font-size: 0.9rem;">High</span>
                                         </div>
                                     </div>
@@ -849,6 +915,7 @@
                     console.log('Color metric changed to:', currentColorMetric);
                     applyColorScheme();
                     updateLegend();
+                    updateAllMarkerPopups(); // Update popup content for all markers
                 });
             }
 
@@ -1245,33 +1312,22 @@
             }
         }
 
-        // Function to get color based on value and percentiles (gradient: green → yellow → orange → red)
+        // Function to get color based on value and percentiles (gradient: very light blue → dark blue)
         function getColorForValue(value, min, max) {
             if (value === null || value === undefined || isNaN(value) || max === min) {
-                return 'blue'; // Default color if no data
+                return 'rgb(240, 248, 255)'; // Default very light blue if no data
             }
             
             // Normalize value to 0-1 range
             const normalized = (value - min) / (max - min);
             
-            // Gradient: green (low) → yellow (medium-low) → orange (medium-high) → red (high)
-            if (normalized < 0.25) {
-                // Green to yellow-green (0-25%)
-                const t = normalized / 0.25;
-                return `rgb(${Math.round(34 + t * 221)}, ${Math.round(139 + t * 116)}, ${Math.round(34 - t * 34)})`; // #228B22 to #FFD700
-            } else if (normalized < 0.5) {
-                // Yellow-green to yellow (25-50%)
-                const t = (normalized - 0.25) / 0.25;
-                return `rgb(${Math.round(255 - t * 55)}, ${Math.round(255 - t * 55)}, ${Math.round(0 + t * 0)})`; // #FFD700 to #FFFF00
-            } else if (normalized < 0.75) {
-                // Yellow to orange (50-75%)
-                const t = (normalized - 0.5) / 0.25;
-                return `rgb(${Math.round(255 - t * 0)}, ${Math.round(200 - t * 100)}, ${Math.round(0 + t * 0)})`; // #FFFF00 to #FF8C00
-            } else {
-                // Orange to red (75-100%)
-                const t = (normalized - 0.75) / 0.25;
-                return `rgb(${Math.round(255 - t * 0)}, ${Math.round(100 - t * 100)}, ${Math.round(0 + t * 0)})`; // #FF8C00 to #FF0000
-            }
+            // Gradient: very light blue (low) → medium blue → dark blue (high)
+            // Very light blue: rgb(240, 248, 255) to Dark blue: rgb(0, 0, 139)
+            const r = Math.round(240 - normalized * 240);
+            const g = Math.round(248 - normalized * 248);
+            const b = Math.round(255 - normalized * 116); // 255 to 139
+            
+            return `rgb(${r}, ${g}, ${b})`;
         }
 
         // Function to get metric value for a metro based on selected color metric
@@ -1552,6 +1608,52 @@
             }
         }
 
+        // Function to build popup content based on current color metric
+        function buildPopupContent(metroName, metroData) {
+            let popupContent = `<div class="popup-header">${metroName}</div>`;
+            
+            // Add current metric value if available
+            if (metroData && currentColorMetric) {
+                const value = getMetricValue(metroData, currentColorMetric);
+                if (value > 0 && !isNaN(value)) {
+                    let metricLabel = '';
+                    let formattedValue = '';
+                    switch(currentColorMetric) {
+                        case 'trips':
+                            metricLabel = 'Trips per Capita';
+                            formattedValue = value.toFixed(1);
+                            break;
+                        case 'expenses':
+                            metricLabel = 'Operating Expenses per Person';
+                            formattedValue = `$${value.toLocaleString('en-US', {maximumFractionDigits: 0})}`;
+                            break;
+                        case 'fares':
+                            metricLabel = 'Fares per Person';
+                            formattedValue = `$${value.toLocaleString('en-US', {maximumFractionDigits: 0})}`;
+                            break;
+                    }
+                    if (metricLabel) {
+                        popupContent += `<div class="popup-info">
+                            <span class="popup-info-label">${metricLabel}:</span>
+                            <span class="popup-info-value">${formattedValue}</span>
+                        </div>`;
+                    }
+                }
+            }
+            
+            return popupContent;
+        }
+
+        // Function to update all marker popups when color metric changes
+        function updateAllMarkerPopups() {
+            Object.values(metroMarkers).forEach(marker => {
+                if (marker && marker._metroName && marker._metroData) {
+                    const popupContent = buildPopupContent(marker._metroName, marker._metroData);
+                    marker.setPopupContent(popupContent);
+                }
+            });
+        }
+
         // Function to add a marker to the map for a metro area
         function addMetroMarker(metroName, state, coordinates, population = null, metroData = null) {
             // Determine icon size based on population
@@ -1575,12 +1677,25 @@
             }
             
             // Create marker with colored icon
-            const popupText = `<strong>${metroName}</strong>`;
+            // Build enhanced popup content with blue theme
+            const popupContent = buildPopupContent(metroName, metroData);
             
             const marker = L.marker(coordinates, {
                 icon: createColoredMarkerIcon(markerColor, iconSize)
             })
-                .bindPopup(popupText)
+                .bindPopup(popupContent, {
+                    className: 'custom-blue-popup',
+                    closeOnClick: false,
+                    autoClose: false
+                })
+                .on('mouseover', function() {
+                    // Show popup on hover
+                    marker.openPopup();
+                })
+                .on('mouseout', function() {
+                    // Hide popup when mouse leaves
+                    marker.closePopup();
+                })
                 .on('click', function() {
                     // When marker is clicked, show metro details in SearchResultPanel (updates in place)
                     console.log('Map marker clicked:', metroName);
