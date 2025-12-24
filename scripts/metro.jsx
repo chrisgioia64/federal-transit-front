@@ -34,6 +34,17 @@ function MetroDetailsApp() {
             // Store metro name globally for DetailedAnalysisCharts
             window.currentSelectedMetro = metroName;
             
+            // Update Agency tab title
+            const titleElement = document.getElementById('agency-tab-title');
+            if (titleElement) {
+                if (metroName) {
+                    titleElement.textContent = metroName;
+                    titleElement.style.display = 'block';
+                } else {
+                    titleElement.style.display = 'none';
+                }
+            }
+            
             // Update DetailedAnalysisCharts if root exists
             if (window.metroChartsRoot) {
                 window.metroChartsRoot.render(<DetailedAnalysisCharts metro={metroName} />);
@@ -96,11 +107,6 @@ function MetroDetailsApp() {
 
     return (
         <>
-            {metro && (
-                <a href="#metro-charts" className="btn btn-outline-primary w-100 mb-3" style={{display: 'block', marginBottom: '1rem', width: '100%'}}>
-                    View Detailed Analysis
-                </a>
-            )}
             {metro && <SearchResultPanel metro={metro} show={show} setShow={setShow} />}
         </>
     );
@@ -1178,10 +1184,23 @@ async function updateStackedBarChartAgency(chart_id, chart, setChart, metro, sta
 function DetailedAnalysisCharts(props) {
     const metro = props.metro || window.currentSelectedMetro || null;
     
+    // Update title when component renders
+    useEffect(() => {
+        const titleElement = document.getElementById('agency-tab-title');
+        if (titleElement) {
+            if (metro) {
+                titleElement.textContent = metro;
+                titleElement.style.display = 'block';
+            } else {
+                titleElement.style.display = 'none';
+            }
+        }
+    }, [metro]);
+    
     if (!metro) {
         return (
             <div className="text-center text-muted py-5">
-                <p>Select a city from the map above to view detailed analysis charts.</p>
+                <p>Select a city from the Map tab to view detailed analysis charts.</p>
             </div>
         );
     }

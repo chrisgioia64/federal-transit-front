@@ -33,6 +33,35 @@
             padding: 1rem 0;
         }
 
+        /* Tab Navigation Styling */
+        .nav-tabs {
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        .nav-tabs .nav-link {
+            color: #495057;
+            border: none;
+            border-bottom: 3px solid transparent;
+            padding: 0.75rem 1.5rem;
+            font-weight: 500;
+        }
+
+        .nav-tabs .nav-link:hover {
+            border-bottom-color: #dee2e6;
+            color: #212529;
+        }
+
+        .nav-tabs .nav-link.active {
+            color: #212529;
+            background-color: transparent;
+            border-bottom-color: #212529;
+            font-weight: 600;
+        }
+
+        .tab-content {
+            margin-top: 0;
+        }
+
         /* Section Spacing & Alternating Colors */
         section {
             padding-top: 100px; /* Offset for sticky header */
@@ -380,6 +409,23 @@
         </div>
     </nav>
 
+    <!-- Tab Navigation -->
+    <div class="container mt-3">
+        <ul class="nav nav-tabs" id="mainTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="map-tab" data-bs-toggle="tab" data-bs-target="#map-pane" type="button" role="tab" aria-controls="map-pane" aria-selected="true">Map</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="agency-tab" data-bs-toggle="tab" data-bs-target="#agency-pane" type="button" role="tab" aria-controls="agency-pane" aria-selected="false">Agency</button>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="mainTabContent">
+        <!-- Map Tab -->
+        <div class="tab-pane fade show active" id="map-pane" role="tabpanel" aria-labelledby="map-tab">
+
     <!-- <section id="home" class="bg-section-white">
         <div class="container text-center">
             <h1 class="display-4 mb-4">Federal Transit Data Analysis</h1>
@@ -436,7 +482,7 @@
                         </tr>
                         <tr>
                             <td style="padding: 0.25rem 0.5rem 0.25rem 0; vertical-align: middle; white-space: nowrap;">
-                                <label for="color-metric" class="form-label mb-0 small">Color by Metric:</label>
+                                <label for="color-metric" class="form-label mb-0 small">Color By:</label>
                             </td>
                             <td style="padding: 0.25rem 0; vertical-align: middle; width: 100%;">
                                 <select id="color-metric" class="form-select form-select-sm" style="width: 100%; max-width: 300px;">
@@ -483,24 +529,24 @@
                         <p>Click a marker on the map to view detailed transit statistics.</p>
                     </div>
                 
-                    <div id="metro-root">
-                        <a href="#metro-charts" class="btn btn-outline-primary w-100">
-                            View Detailed Analysis Charts (Full Screen)
-                        </a>
-                    </div>
+                    <div id="metro-root"></div>
                 </div>
             </div>
         </div>
     </section>
 
-    <section id="metro-charts" class="bg-section-white">
-        <div class="container">
-        <h2 class="text-center mb-2">Detailed Analysis</h2>
-        <p class="text-center mb-5 text-muted">Scroll up to return to the interactive map.</p>
+        </div>
+        <!-- Agency Tab -->
+        <div class="tab-pane fade" id="agency-pane" role="tabpanel" aria-labelledby="agency-tab">
+            <section id="metro-charts" class="bg-section-white">
+                <div class="container">
+                    <h2 id="agency-tab-title" class="text-center mb-4" style="display: none;">Detailed Analysis</h2>
 
-        <div id="metro-charts-root"></div>
+                    <div id="metro-charts-root"></div>
+                </div>
+            </section>
+        </div>
     </div>
-    </section>
 
     <!-- Aggregate Query Table section - commented out -->
     <!--
@@ -665,6 +711,9 @@
             window.addEventListener('resize', function() {
                 setTimeout(alignStatsWithMap, 100);
             });
+            
+            // Initialize Agency tab title (hidden by default)
+            updateAgencyTabTitle(null);
             
             // Initialize the map centered on the US
             mapInstance = L.map('us-map-container').setView([39.8283, -98.5795], 4);
@@ -1356,11 +1405,25 @@
         }
 
         // Function to call setSelectedMetro with retry logic (handles Vite module loading timing)
+        // Function to update Agency tab title with selected city
+        function updateAgencyTabTitle(metroName) {
+            const titleElement = document.getElementById('agency-tab-title');
+            if (titleElement) {
+                if (metroName) {
+                    titleElement.textContent = metroName;
+                    titleElement.style.display = 'block';
+                } else {
+                    titleElement.style.display = 'none';
+                }
+            }
+        }
+
         function callSetSelectedMetro(metroName, retries = 50, delay = 100) {
             if (window.setSelectedMetro && typeof window.setSelectedMetro === 'function') {
                 console.log('Calling setSelectedMetro with:', metroName);
                 try {
                     window.setSelectedMetro(metroName);
+                    updateAgencyTabTitle(metroName);
                     return true;
                 } catch (error) {
                     console.error('Error calling setSelectedMetro:', error);
@@ -1405,9 +1468,7 @@
             }
             
             // Create marker with colored icon
-            const popupText = population 
-                ? `<strong>${metroName}</strong><br>${state}<br>Population: ${population.toLocaleString()}`
-                : `<strong>${metroName}</strong><br>${state}`;
+            const popupText = `<strong>${metroName}</strong>`;
             
             const marker = L.marker(coordinates, {
                 icon: createColoredMarkerIcon(markerColor, iconSize)
