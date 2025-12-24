@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Federal Transit Analysis Dashboard</title>
+    <title>Farebox</title>
+    <link rel="icon" type="image/jpeg" href="railway.jpg">
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -53,9 +54,33 @@
 
         .nav-tabs .nav-link.active {
             color: #212529;
-            background-color: transparent;
-            border-bottom-color: #212529;
-            font-weight: 600;
+        }
+
+        /* Tab Navigation Styling for Dark Banner */
+        .banner-with-tabs .nav-tabs {
+            border-bottom: none;
+        }
+
+        .banner-with-tabs .nav-tabs .nav-link:hover {
+            color: white !important;
+            border-bottom-color: rgba(255, 255, 255, 0.5) !important;
+        }
+
+        .banner-with-tabs .nav-tabs .nav-link.active {
+            color: white !important;
+            border-bottom-color: white !important;
+        }
+
+        /* Responsive adjustments for banner tabs */
+        @media (max-width: 768px) {
+            .banner-with-tabs .d-flex {
+                flex-direction: column;
+                align-items: flex-start !important;
+            }
+            .banner-with-tabs .nav-tabs {
+                margin-top: 1rem;
+                width: 100%;
+            }
         }
 
         .tab-content {
@@ -94,11 +119,17 @@
         .stats-section-wrapper {
             flex: 1;
             min-width: 0; /* Allow flex item to shrink */
-            max-height: 600px;
-            overflow-y: auto;
-            overflow-x: hidden;
-            padding-right: 0.5rem; /* Space for scrollbar */
+            max-height: 550px;
+            overflow: hidden;
             margin-top: 0; /* Will be calculated to align with map */
+        }
+
+        #stats-placeholder {
+            height: 550px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
 
 
@@ -109,28 +140,10 @@
             margin-bottom: 1rem;
         }
 
-        /* Custom scrollbar styling for stats panel */
-        .stats-section-wrapper::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .stats-section-wrapper::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 4px;
-        }
-
-        .stats-section-wrapper::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 4px;
-        }
-
-        .stats-section-wrapper::-webkit-scrollbar-thumb:hover {
-            background: #555;
-        }
 
         /* Map Container */
         #us-map-container {
-            height: 600px;
+            height: 550px;
             width: 100%;
             border-radius: 8px;
             border: 2px solid #dee2e6;
@@ -145,11 +158,15 @@
 
             .stats-section-wrapper {
                 max-height: none;
-                overflow-y: visible;
+                overflow: hidden;
             }
 
             #us-map-container {
-                height: 400px;
+                height: 350px;
+            }
+
+            #stats-placeholder {
+                height: 350px;
             }
         }
 
@@ -163,7 +180,7 @@
         }
 
         .metro_card_title {
-            background-color: #f8f9fa;
+            background-color: #e9ecef;
             border-bottom: 1px solid #dee2e6;
             padding: 1rem 1.5rem;
             border-radius: 8px 8px 0 0;
@@ -194,7 +211,7 @@
         .population_area_div {
             margin-top: 2rem;
             margin-bottom: 2rem;
-            border: 1px solid #dee2e6;
+            border: none;
             border-radius: 8px;
             padding: 1.5rem;
             background-color: #ffffff;
@@ -356,6 +373,54 @@
             transform: translateZ(0);
         }
 
+        /* Rank Info Icon and Tooltip */
+        .rank-info-icon {
+            position: relative;
+            display: inline-block;
+            color: #6c757d;
+        }
+
+        .rank-info-icon:hover {
+            color: #495057;
+        }
+
+        .rank-tooltip {
+            visibility: hidden;
+            opacity: 0;
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #495057;
+            color: #ffffff;
+            text-align: left;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem;
+            font-size: 0.6875rem;
+            line-height: 1.5;
+            white-space: normal;
+            width: 180px;
+            z-index: 1000;
+            box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.2);
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+            pointer-events: none;
+        }
+
+        .rank-tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: #495057;
+        }
+
+        .rank-info-icon:hover .rank-tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+
         /* Stacked Bar Chart Containers */
         .stacked_bar_chart_div {
             margin-top: 2rem;
@@ -399,35 +464,47 @@
 </head>
 <body>
 
-    <nav class="navbar sticky-top navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#">Federal Transit Analysis</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse justify-content-center" id="navbarNav">
-                <ul class="navbar-nav gap-3">
-                    <!-- <li class="nav-item"><a class="nav-link" href="#query">Table View</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#scatterplot">Scatterplot</a></li> -->
+    <!-- Page Title with Tabs -->
+    <div class="container-fluid banner-with-tabs" style="background-color: #1a237e; padding-top: 1.05rem; padding-bottom: 1.05rem; margin-bottom: 12px;">
+        <div class="container">
+            <div class="d-flex align-items-center justify-content-between flex-wrap" style="gap: 2rem;">
+                <div class="d-flex align-items-center">
+                    <img src="railway.jpg" alt="Railway Icon" style="height: 60px; width: auto; margin-right: 2rem; mix-blend-mode: screen; filter: brightness(1.5); border-radius: 8px;">
+                    <h1 style="font-size: 2.2rem; font-weight: 600; color: white; margin: 0;">Farebox</h1>
+                </div>
+                <ul class="nav nav-tabs" id="mainTabs" role="tablist" style="border-bottom: none; margin: 0;">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="map-tab" data-bs-toggle="tab" data-bs-target="#map-pane" type="button" role="tab" aria-controls="map-pane" aria-selected="true" style="color: white; border: none; border-bottom: 3px solid white; background-color: transparent; padding: 0.75rem 1.5rem; font-weight: 500;">Map</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="agency-tab" data-bs-toggle="tab" data-bs-target="#agency-pane" type="button" role="tab" aria-controls="agency-pane" aria-selected="false" style="color: rgba(255, 255, 255, 0.7); border: none; border-bottom: 3px solid transparent; background-color: transparent; padding: 0.75rem 1.5rem; font-weight: 500;">Agency</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="about-tab" data-bs-toggle="tab" data-bs-target="#about-pane" type="button" role="tab" aria-controls="about-pane" aria-selected="false" style="color: rgba(255, 255, 255, 0.7); border: none; border-bottom: 3px solid transparent; background-color: transparent; padding: 0.75rem 1.5rem; font-weight: 500;">About</button>
+                    </li>
                 </ul>
             </div>
         </div>
-    </nav>
+    </div>
 
-    <!-- Tab Navigation -->
-    <div class="container mt-3">
-        <ul class="nav nav-tabs" id="mainTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="map-tab" data-bs-toggle="tab" data-bs-target="#map-pane" type="button" role="tab" aria-controls="map-pane" aria-selected="true">Map</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="agency-tab" data-bs-toggle="tab" data-bs-target="#agency-pane" type="button" role="tab" aria-controls="agency-pane" aria-selected="false">Agency</button>
-            </li>
-        </ul>
+    <!-- Description and Video Section -->
+    <div class="container py-4" style="display: none;">
+        <div class="row">
+            <div class="col-md-9">
+                <p style="color: #1a237e; font-size: 1.1rem; line-height: 1.6; text-align: left;">
+                    Explore transit data for over 50 major US metropolitan areas with interactive maps and charts. Dive into aggregate statistics like per-capita ridership and costs, or drill down into detailed breakdowns by agency and transit mode.
+                </p>
+            </div>
+            <div class="col-md-3">
+                <div class="ratio ratio-16x9">
+                    <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Tab Content -->
-    <div class="tab-content" id="mainTabContent">
+    <div class="tab-content" id="mainTabContent" style="margin-top: 0;">
         <!-- Map Tab -->
         <div class="tab-pane fade show active" id="map-pane" role="tabpanel" aria-labelledby="map-tab">
 
@@ -468,50 +545,10 @@
         </div>
     </section> -->
 
-    <section id="us-map" class="bg-section-alt">
-        <div class="container">
+    <section id="us-map" class="bg-section-alt" style="margin-top: 0; padding-top: 0;">
+        <div class="container" style="padding-top: 0;">
             <div class="map-stats-container">
                 <div class="map-section-wrapper">
-                    <table class="mb-3" style="width: 100%; border-collapse: collapse;">
-                        <tr>
-                            <td style="padding: 0.25rem 0.5rem 0.25rem 0; vertical-align: middle; white-space: nowrap;">
-                                <label for="population-filter" class="form-label mb-0 small">Filter by Population:</label>
-                            </td>
-                            <td style="padding: 0.25rem 0; vertical-align: middle; width: 100%;">
-                                <select id="population-filter" class="form-select form-select-sm" style="width: 100%; max-width: 300px;">
-                                    <option value="500000">Above 500,000</option>
-                                    <option value="1000000" selected>Above 1,000,000</option>
-                                    <option value="2000000">Above 2,000,000</option>
-                                </select>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 0.25rem 0.5rem 0.25rem 0; vertical-align: middle; white-space: nowrap;">
-                                <label for="color-metric" class="form-label mb-0 small">Color By:</label>
-                            </td>
-                            <td style="padding: 0.25rem 0; vertical-align: middle; width: 100%;">
-                                <select id="color-metric" class="form-select form-select-sm" style="width: 100%; max-width: 300px;">
-                                    <option value="trips">Trips per Capita</option>
-                                    <option value="expenses" selected>Operating Expenses per Person</option>
-                                    <option value="fares">Fares per Person</option>
-                                </select>
-                            </td>
-                        </tr>
-                    </table>
-                    <div id="color-legend" class="mb-3" style="min-height: 60px;">
-                        <label class="form-label">Legend:</label>
-                        <div id="legend-content" class="d-flex align-items-center" style="gap: 10px; flex-wrap: wrap; visibility: hidden;">
-                            <div class="d-flex align-items-center" style="gap: 5px;">
-                                <div style="width: 20px; height: 20px; border-radius: 50%; background-color: rgb(34, 139, 34); border: 1px solid white; box-shadow: 0 1px 2px rgba(0,0,0,0.2);"></div>
-                                <span id="legend-min" style="font-size: 0.9rem;">Low</span>
-                            </div>
-                            <div style="width: 150px; height: 20px; background: linear-gradient(to right, rgb(34, 139, 34), rgb(255, 215, 0), rgb(255, 255, 0), rgb(255, 140, 0), rgb(255, 0, 0)); border-radius: 0; border: 1px solid #ccc;"></div>
-                            <div class="d-flex align-items-center" style="gap: 5px;">
-                                <div style="width: 20px; height: 20px; border-radius: 50%; background-color: rgb(255, 0, 0); border: 1px solid white; box-shadow: 0 1px 2px rgba(0,0,0,0.2);"></div>
-                                <span id="legend-max" style="font-size: 0.9rem;">High</span>
-                            </div>
-                        </div>
-                    </div>
                     <div id="us-map-container" style="position: relative;">
                         <div id="map-loading-overlay" class="d-flex flex-column align-items-center justify-content-center" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255, 255, 255, 0.9); z-index: 1000; border-radius: 4px; display: none;">
                             <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
@@ -523,6 +560,52 @@
                             </div>
                         </div>
                     </div>
+                    <table class="mb-3 mt-3" style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <td style="padding: 0.75rem 0.5rem 0.75rem 0; vertical-align: middle; white-space: nowrap;">
+                                <label for="population-filter" class="form-label mb-0 small">Filter by Population</label>
+                            </td>
+                            <td style="padding: 0.75rem 0; vertical-align: middle; width: 100%; text-align: right;">
+                                <select id="population-filter" class="form-select form-select-sm" style="width: 280px; display: inline-block;">
+                                    <option value="500000">Above 500,000</option>
+                                    <option value="1000000" selected>Above 1,000,000</option>
+                                    <option value="2000000">Above 2,000,000</option>
+                                </select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 0.75rem 0.5rem 0.75rem 0; vertical-align: middle; white-space: nowrap;">
+                                <label for="color-metric" class="form-label mb-0 small">Color By</label>
+                            </td>
+                            <td style="padding: 0.75rem 0; vertical-align: middle; width: 100%; text-align: right;">
+                                <select id="color-metric" class="form-select form-select-sm" style="width: 280px; display: inline-block;">
+                                    <option value="trips" selected>Trips per Capita</option>
+                                    <option value="expenses">Operating Expenses per Person</option>
+                                    <option value="fares">Fares per Person</option>
+                                </select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 0.75rem 0.5rem 0.75rem 0; vertical-align: middle; white-space: nowrap;">
+                                <label class="form-label mb-0 small">Legend</label>
+                            </td>
+                            <td style="padding: 0.75rem 0; vertical-align: middle; width: 100%; text-align: right;">
+                                <div id="color-legend" style="display: flex; align-items: center; justify-content: flex-end;">
+                                    <div id="legend-content" class="d-flex align-items-center" style="gap: 10px; flex-wrap: wrap; visibility: hidden;">
+                                        <div class="d-flex align-items-center" style="gap: 5px;">
+                                            <div style="width: 20px; height: 20px; border-radius: 50%; background-color: rgb(34, 139, 34); border: 1px solid white; box-shadow: 0 1px 2px rgba(0,0,0,0.2);"></div>
+                                            <span id="legend-min" style="font-size: 0.9rem;">Low</span>
+                                        </div>
+                                        <div style="width: 150px; height: 20px; background: linear-gradient(to right, rgb(34, 139, 34), rgb(255, 215, 0), rgb(255, 255, 0), rgb(255, 140, 0), rgb(255, 0, 0)); border-radius: 0; border: 1px solid #ccc;"></div>
+                                        <div class="d-flex align-items-center" style="gap: 5px;">
+                                            <div style="width: 20px; height: 20px; border-radius: 50%; background-color: rgb(255, 0, 0); border: 1px solid white; box-shadow: 0 1px 2px rgba(0,0,0,0.2);"></div>
+                                            <span id="legend-max" style="font-size: 0.9rem;">High</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
                 </div>
                 <div class="stats-section-wrapper">
                     <div id="stats-placeholder" class="text-center p-5 text-muted border rounded bg-light">
@@ -548,6 +631,25 @@
                     <h2 id="agency-tab-title" class="text-center mb-4" style="display: none;">Detailed Analysis</h2>
 
                     <div id="metro-charts-root"></div>
+                </div>
+            </section>
+        </div>
+        <!-- About Tab -->
+        <div class="tab-pane fade" id="about-pane" role="tabpanel" aria-labelledby="about-tab">
+            <section class="bg-section-white">
+                <div class="container py-4">
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <p style="color: #555; font-size: 1.1rem; line-height: 1.6; text-align: left;">
+                                Explore transit data for over 50 major US metropolitan areas with interactive maps and charts. Dive into aggregate statistics like per-capita ridership and costs, or drill down into detailed breakdowns by agency and transit mode.
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="ratio ratio-16x9">
+                                <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
         </div>
@@ -690,7 +792,7 @@
         let selectedMarkerKey = null; // Track key of selected marker
         let allMetroData = []; // Store all metro data with population and metrics for filtering/coloring
         let currentPopulationFilter = 1000000; // Default filter: 1,000,000
-        let currentColorMetric = 'expenses'; // Default: Operating Expenses per Person
+        let currentColorMetric = 'trips'; // Default: Trips per Capita
         let isInitialLoad = true; // Track if this is the initial map load
         
         // Function to align stats section with map
@@ -1265,10 +1367,10 @@
             const min = Math.min(...values);
             const max = Math.max(...values);
             
-            // Update legend text - show "Low (e.g., $9.5)" and "High (e.g., $706.8)"
+            // Update legend text - show "Low ($9.5)" and "High ($706.8)"
             // Metric name is already shown in the dropdown above, so we don't repeat it
-            legendMin.textContent = `Low (e.g., ${formatMetricValue(min, currentColorMetric)})`;
-            legendMax.textContent = `High (e.g., ${formatMetricValue(max, currentColorMetric)})`;
+            legendMin.textContent = `Low (${formatMetricValue(min, currentColorMetric)})`;
+            legendMax.textContent = `High (${formatMetricValue(max, currentColorMetric)})`;
             
             // Show legend content
             legendContent.style.visibility = 'visible';
