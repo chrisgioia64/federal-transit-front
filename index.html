@@ -71,6 +71,11 @@
             border-bottom-color: white !important;
         }
 
+        .banner-with-tabs .nav-tabs .nav-link:not(.active) {
+            color: rgba(255, 255, 255, 0.7) !important;
+            border-bottom-color: transparent !important;
+        }
+
         /* Responsive adjustments for banner tabs */
         @media (max-width: 768px) {
             .banner-with-tabs .d-flex {
@@ -581,7 +586,7 @@
             </div>
             <div class="col-md-3">
                 <div class="ratio ratio-16x9">
-                    <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+                    <iframe src="https://www.youtube.com/embed/zh0FRZloDS8" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
                 </div>
             </div>
         </div>
@@ -730,7 +735,7 @@
                         </div>
                         <div class="col-md-6">
                             <div class="ratio ratio-16x9">
-                                <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+                                <iframe src="https://www.youtube.com/embed/zh0FRZloDS8" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
                             </div>
                         </div>
                     </div>
@@ -816,10 +821,57 @@
     <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
 
+    <script>
+        // Handle tab switching to update active states
+        function initializeTabHandling() {
+            const tabButtons = document.querySelectorAll('#mainTabs button[data-bs-toggle="tab"]');
+            
+            // Function to update tab styles
+            function updateTabStyles(activeTabId) {
+                tabButtons.forEach(button => {
+                    if (button.id === activeTabId) {
+                        // Active tab
+                        button.style.color = 'white';
+                        button.style.borderBottom = '3px solid white';
+                        button.setAttribute('aria-selected', 'true');
+                        button.classList.add('active');
+                    } else {
+                        // Inactive tabs
+                        button.style.color = 'rgba(255, 255, 255, 0.7)';
+                        button.style.borderBottom = '3px solid transparent';
+                        button.setAttribute('aria-selected', 'false');
+                        button.classList.remove('active');
+                    }
+                });
+            }
+            
+            // Listen for Bootstrap tab events
+            tabButtons.forEach(button => {
+                button.addEventListener('shown.bs.tab', function(event) {
+                    updateTabStyles(event.target.id);
+                });
+            });
+            
+            // Initialize with current active tab
+            const activeTab = document.querySelector('#mainTabs button.nav-link.active');
+            if (activeTab) {
+                updateTabStyles(activeTab.id);
+            }
+        }
+        
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeTabHandling);
+        } else {
+            // DOM is already ready
+            initializeTabHandling();
+        }
+    </script>
+
     <script type="module">
         // Import API_URL from config_api.js
         import { API_URL } from './scripts/config_api.js';
-        
+
         /*
          * MAP DATA POPULATION GUIDE
          * ========================
