@@ -69,6 +69,7 @@
             overflow-y: auto;
             overflow-x: hidden;
             padding-right: 0.5rem; /* Space for scrollbar */
+            margin-top: 0; /* Will be calculated to align with map */
         }
 
 
@@ -372,8 +373,6 @@
             </button>
             <div class="collapse navbar-collapse justify-content-center" id="navbarNav">
                 <ul class="navbar-nav gap-3">
-                    <li class="nav-item"><a class="nav-link" href="#home">Home</a></li>
-                    <li class="nav-item"><a class="nav-link active" href="#us-map">Map</a></li>
                     <!-- <li class="nav-item"><a class="nav-link" href="#query">Table View</a></li>
                     <li class="nav-item"><a class="nav-link" href="#scatterplot">Scatterplot</a></li> -->
                 </ul>
@@ -422,33 +421,40 @@
         <div class="container">
             <div class="map-stats-container">
                 <div class="map-section-wrapper">
-                    <h3 class="mb-3">Nationwide Map</h3>
-                    <div class="mb-3 d-flex align-items-center gap-3 flex-wrap">
-                        <div class="d-flex align-items-center gap-2">
-                            <label for="population-filter" class="form-label mb-0 small">Filter by Population:</label>
-                            <select id="population-filter" class="form-select form-select-sm" style="max-width: 200px;">
-                                <option value="500000">Above 500,000</option>
-                                <option value="1000000" selected>Above 1,000,000</option>
-                                <option value="2000000">Above 2,000,000</option>
-                            </select>
-                        </div>
-                        <div class="d-flex align-items-center gap-2">
-                            <label for="color-metric" class="form-label mb-0 small">Color by Metric:</label>
-                            <select id="color-metric" class="form-select form-select-sm" style="max-width: 250px;">
-                                <option value="trips">Trips per Capita</option>
-                                <option value="expenses" selected>Operating Expenses per Person</option>
-                                <option value="fares">Fares per Person</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div id="color-legend" class="mb-3" style="display: none;">
+                    <table class="mb-3" style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <td style="padding: 0.25rem 0.5rem 0.25rem 0; vertical-align: middle; white-space: nowrap;">
+                                <label for="population-filter" class="form-label mb-0 small">Filter by Population:</label>
+                            </td>
+                            <td style="padding: 0.25rem 0; vertical-align: middle; width: 100%;">
+                                <select id="population-filter" class="form-select form-select-sm" style="width: 100%; max-width: 300px;">
+                                    <option value="500000">Above 500,000</option>
+                                    <option value="1000000" selected>Above 1,000,000</option>
+                                    <option value="2000000">Above 2,000,000</option>
+                                </select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 0.25rem 0.5rem 0.25rem 0; vertical-align: middle; white-space: nowrap;">
+                                <label for="color-metric" class="form-label mb-0 small">Color by Metric:</label>
+                            </td>
+                            <td style="padding: 0.25rem 0; vertical-align: middle; width: 100%;">
+                                <select id="color-metric" class="form-select form-select-sm" style="width: 100%; max-width: 300px;">
+                                    <option value="trips">Trips per Capita</option>
+                                    <option value="expenses" selected>Operating Expenses per Person</option>
+                                    <option value="fares">Fares per Person</option>
+                                </select>
+                            </td>
+                        </tr>
+                    </table>
+                    <div id="color-legend" class="mb-3" style="min-height: 60px;">
                         <label class="form-label">Legend:</label>
-                        <div class="d-flex align-items-center" style="gap: 10px; flex-wrap: wrap;">
+                        <div id="legend-content" class="d-flex align-items-center" style="gap: 10px; flex-wrap: wrap; visibility: hidden;">
                             <div class="d-flex align-items-center" style="gap: 5px;">
                                 <div style="width: 20px; height: 20px; border-radius: 50%; background-color: rgb(34, 139, 34); border: 1px solid white; box-shadow: 0 1px 2px rgba(0,0,0,0.2);"></div>
                                 <span id="legend-min" style="font-size: 0.9rem;">Low</span>
                             </div>
-                            <div style="width: 150px; height: 20px; background: linear-gradient(to right, rgb(34, 139, 34), rgb(255, 215, 0), rgb(255, 255, 0), rgb(255, 140, 0), rgb(255, 0, 0)); border-radius: 10px; border: 1px solid #ccc;"></div>
+                            <div style="width: 150px; height: 20px; background: linear-gradient(to right, rgb(34, 139, 34), rgb(255, 215, 0), rgb(255, 255, 0), rgb(255, 140, 0), rgb(255, 0, 0)); border-radius: 0; border: 1px solid #ccc;"></div>
                             <div class="d-flex align-items-center" style="gap: 5px;">
                                 <div style="width: 20px; height: 20px; border-radius: 50%; background-color: rgb(255, 0, 0); border: 1px solid white; box-shadow: 0 1px 2px rgba(0,0,0,0.2);"></div>
                                 <span id="legend-max" style="font-size: 0.9rem;">High</span>
@@ -468,7 +474,6 @@
                     </div>
                 </div>
                 <div class="stats-section-wrapper">
-                    <h3 class="mb-3" id="metro-stats-title">Metropolitan Area Statistics</h3>
                     <div id="stats-placeholder" class="text-center p-5 text-muted border rounded bg-light">
                         <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" class="bi bi-geo-alt mb-3" viewBox="0 0 16 16">
                             <path d="M12.166 8.94c-.524 1.062-1.234 2.12-1.96 3.07A31.493 31.493 0 0 1 8 14.58a31.481 31.481 0 0 1-2.206-2.57c-.726-.95-1.436-2.008-1.96-3.07C3.304 7.867 3 6.862 3 6a5 5 0 0 1 10 0c0 .862-.305 1.867-.834 2.94zM8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10z"/>
@@ -637,7 +642,30 @@
         let currentColorMetric = 'expenses'; // Default: Operating Expenses per Person
         let isInitialLoad = true; // Track if this is the initial map load
         
+        // Function to align stats section with map
+        function alignStatsWithMap() {
+            const mapSection = document.querySelector('.map-section-wrapper');
+            const mapContainer = document.getElementById('us-map-container');
+            const statsSection = document.querySelector('.stats-section-wrapper');
+            
+            if (mapSection && mapContainer && statsSection) {
+                // Calculate offset of map container relative to map section wrapper
+                const mapSectionRect = mapSection.getBoundingClientRect();
+                const mapContainerRect = mapContainer.getBoundingClientRect();
+                const offset = mapContainerRect.top - mapSectionRect.top;
+                statsSection.style.marginTop = offset + 'px';
+            }
+        }
+        
         document.addEventListener('DOMContentLoaded', function() {
+            // Align stats section with map
+            alignStatsWithMap();
+            
+            // Re-align on window resize
+            window.addEventListener('resize', function() {
+                setTimeout(alignStatsWithMap, 100);
+            });
+            
             // Initialize the map centered on the US
             mapInstance = L.map('us-map-container').setView([39.8283, -98.5795], 4);
             
@@ -1145,25 +1173,28 @@
         // Function to format metric value with units
         function formatMetricValue(value, metric) {
             if (metric === 'expenses' || metric === 'fares') {
-                return '$' + value.toFixed(2);
+                // Round to nearest dollar
+                return '$' + Math.round(value);
             }
-            return value.toFixed(1);
+            // For trips per capita, round to nearest whole number
+            return Math.round(value);
         }
 
         // Function to update the color legend
         function updateLegend() {
             const legendDiv = document.getElementById('color-legend');
+            const legendContent = document.getElementById('legend-content');
             const legendMin = document.getElementById('legend-min');
             const legendMax = document.getElementById('legend-max');
             
-            if (!legendDiv || !legendMin || !legendMax) {
+            if (!legendDiv || !legendContent || !legendMin || !legendMax) {
                 console.warn('Legend elements not found');
                 return;
             }
 
-            // If no metro data, hide legend
+            // If no metro data, hide legend content but keep space
             if (allMetroData.length === 0) {
-                legendDiv.style.display = 'none';
+                legendContent.style.visibility = 'hidden';
                 return;
             }
 
@@ -1173,7 +1204,7 @@
                 .filter(v => v > 0 && !isNaN(v));
             
             if (values.length === 0) {
-                legendDiv.style.display = 'none';
+                legendContent.style.visibility = 'hidden';
                 return;
             }
 
@@ -1185,8 +1216,8 @@
             legendMin.textContent = `Low (e.g., ${formatMetricValue(min, currentColorMetric)})`;
             legendMax.textContent = `High (e.g., ${formatMetricValue(max, currentColorMetric)})`;
             
-            // Show legend
-            legendDiv.style.display = 'block';
+            // Show legend content
+            legendContent.style.visibility = 'visible';
         }
 
         // Function to apply color scheme to all markers based on selected metric
