@@ -262,17 +262,23 @@ export async function setTransitModesAPI(setTransit, metro, statistic) {
     let rail = getTransitMode(json, "Rail");
     let demand = getTransitMode(json, "Demand");
     let total = bus + rail + demand;
-    let busPercent = (bus / total) * 100;
-    let railPercent = (rail / total) * 100;
-    let demandPercent = (demand / total) * 100;
-    let body = {
-      bus: busPercent,
-      rail: railPercent,
-      demand: demandPercent
+    // Only update if we have valid data (total > 0)
+    if (total > 0) {
+      let busPercent = (bus / total) * 100;
+      let railPercent = (rail / total) * 100;
+      let demandPercent = (demand / total) * 100;
+      let body = {
+        bus: busPercent,
+        rail: railPercent,
+        demand: demandPercent
+      }
+      console.log("body")
+      console.log(body)
+      // setTransit can be a function (callback) or a setState function
+      if (typeof setTransit === 'function') {
+        setTransit(body);
+      }
     }
-    console.log("body")
-    console.log(body)
-    setTransit(body);
   }
   return json;
 }

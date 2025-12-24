@@ -349,6 +349,11 @@
             align-items: center;
             justify-content: center;
             color: #ffffff;
+            /* Remove slow Bootstrap transition - render instantly */
+            transition: none !important;
+            /* Use GPU acceleration for smoother rendering */
+            will-change: width;
+            transform: translateZ(0);
         }
 
         /* Stacked Bar Chart Containers */

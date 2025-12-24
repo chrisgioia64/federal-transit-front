@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { 
     setMetroInfoAPI,
@@ -708,18 +708,47 @@ function MetroAreaPopulationArea(props) {
     
     const [metros, setMetros] = useState([]);
     const [metrosTransit, setMetrosTransit] = useState([]);
-    const [transit, setTransit] = useState([]);
+    const [transit, setTransit] = useState(null); // For triggering re-renders
+    // Use ref to store transit values - refs persist across renders and metro changes
+    const transitRef = useRef(null);
+    const currentMetroRef = useRef(null); // Track which metro we're currently loading
 
     console.log("props.metro: " + props.metro);
     
-    // Update when metro prop changes
+    // Update when metro prop changes - run API calls in parallel
     useEffect(() => {
         if (props.metro) {
-            setMetroInfoAPI(setMetros, props.metro);
-            setMetroTransitTypeInfoAPI(setMetrosTransit, props.metro)
-            setTransitModesAPI(setTransit, props.metro, "UPT")
+            // Store the current metro we're loading
+            const loadingMetro = props.metro;
+            currentMetroRef.current = loadingMetro;
+            
+            // CRITICAL: transitRef.current keeps its value when metro changes
+            // It will only update when new API data arrives
+            // This completely prevents the "flash to 0" issue
+            
+            // Run all API calls in parallel for better performance
+            Promise.all([
+                setMetroInfoAPI(setMetros, props.metro),
+                setMetroTransitTypeInfoAPI(setMetrosTransit, props.metro),
+                setTransitModesAPI((newTransit) => {
+                    // Only update if we're still on the same metro (prevent stale updates)
+                    if (currentMetroRef.current === loadingMetro && newTransit) {
+                        // CRITICAL: Always update the ref first (persists across renders)
+                        // This ensures the value is available immediately on next render
+                        transitRef.current = newTransit;
+                        // Then update state to trigger re-render
+                        setTransit(newTransit);
+                    }
+                }, props.metro, "UPT")
+            ]).catch(err => {
+                console.error("Error loading metro data:", err);
+            });
         }
     }, [props.metro])
+    
+    // Always use ref value - it never resets when metro changes
+    // Only shows 0 on very first load before any data arrives
+    const displayTransit = transitRef.current || { rail: 0, bus: 0, demand: 0 };
 
     let rail = '50%';
 
@@ -803,9 +832,9 @@ function MetroAreaPopulationArea(props) {
                 <td className="table_col_attribute">Transit Usage</td>
                   <td colSpan='3'>
                     <div class="progress">
-                        <div class="progress-bar" role="progressbar" style={{"width": `${transit.rail}%`}} aria-valuenow="30" aria-valuemin="0" aria-valuemax="100">Rail </div>
-                        <div class="progress-bar bg-success" role="progressbar" style={{"width": `${transit.bus}%`}} aria-valuenow="50" aria-valuemin="0" aria-valuemax="100">Bus </div>
-                        <div class="progress-bar bg-warning" role="progressbar" style={{"width": `${transit.demand}%`}} aria-valuenow='20' aria-valuemin="0" aria-valuemax="100">Demand</div>
+                        <div class="progress-bar" role="progressbar" style={{"width": `${displayTransit.rail || 0}%`}} aria-valuenow={displayTransit.rail || 0} aria-valuemin="0" aria-valuemax="100">Rail </div>
+                        <div class="progress-bar bg-success" role="progressbar" style={{"width": `${displayTransit.bus || 0}%`}} aria-valuenow={displayTransit.bus || 0} aria-valuemin="0" aria-valuemax="100">Bus </div>
+                        <div class="progress-bar bg-warning" role="progressbar" style={{"width": `${displayTransit.demand || 0}%`}} aria-valuenow={displayTransit.demand || 0} aria-valuemin="0" aria-valuemax="100">Demand</div>
                     </div>
 
                   </td>
